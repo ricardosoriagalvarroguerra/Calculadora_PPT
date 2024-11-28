@@ -32,7 +32,7 @@ vista = st.sidebar.radio(
 )
 
 if vista == "Vista Resumen Original":
-    st.title("Resumen General con Tablas Expandibles")
+    st.title("Requerimiento del Área")
 
     # Resumen por país y categorías
     category_columns = ['Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']

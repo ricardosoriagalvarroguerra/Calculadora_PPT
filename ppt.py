@@ -14,7 +14,7 @@ if password == PASSWORD:
     # Cargar los datos
     file_path = 'BDD_Ajuste.xlsx'
     try:
-        df = pd.read_excel(file_path, sheet_name='VPO')
+        df = pd.read_excel(file_path, sheet_name='Original_VPO')
     except ValueError:
         st.error("La hoja 'VPO' no existe en el archivo. Por favor, verifica el archivo.")
     else:

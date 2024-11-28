@@ -51,7 +51,7 @@ if vista == "Vista Resumen Original":
     st.write("### Tabla Completa:")
     st.dataframe(df)
 
-elif vista == "DPP 2025":
+elif vista == "Vista Editable con Actualización":
     st.title("DPP 2025")
 
     # Establecer el monto total deseado por defecto en 434,707

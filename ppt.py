@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-# Configuración de contraseña
+# Configuración de la contraseña
 PASSWORD = "mi_contraseña_secreta"
 
 # Título de la app
@@ -19,24 +19,21 @@ if password == PASSWORD:
         st.error("La hoja 'VPO' no existe en el archivo. Por favor, verifica el archivo.")
     else:
         # Calcular los totales por país y categoría
-        summary_by_country = df.groupby('País').sum()
-        summary_by_category = df[['Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']].sum()
+        category_columns = ['Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
+        df['Total'] = df[category_columns].sum(axis=1)
+        
+        summary_by_country = df.groupby('País')[category_columns + ['Total']].sum()
 
         # Mostrar resumen general
-        st.write("**Resumen General:**")
-
-        # Totales por categoría
-        st.write("### Totales por Categoría:")
-        st.table(summary_by_category)
-
-        # Totales por país con detalle desplegable
-        st.write("### Totales por País:")
-        for country, group in df.groupby('País'):
-            with st.expander(f"{country} (Total: {group['Total'].sum()})"):
-                st.write(group[['Operación', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje', 
-                                'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']])
-
-        # Visualizar toda la tabla
+        st.write("**Resumen General por País:**")
+        for country, data in summary_by_country.iterrows():
+            total = data['Total']
+            with st.expander(f"{country} - Total: {total:,.2f}"):
+                st.write("**Misiones**")
+                for category in category_columns:
+                    st.write(f"- **{category.lower()}:** {data[category]:,.2f}")
+        
+        # Visualizar toda la tabla original
         st.write("### Tabla Completa:")
         st.dataframe(df)
 else:

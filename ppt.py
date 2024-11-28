@@ -35,7 +35,7 @@ if vista == "Vista Resumen Original":
         with st.expander(f"{country} - Total: {total:,.2f}"):
             st.write("**Detalles por Categoría**")
             for category in category_columns:
-                st.write(f"- **{category.lower()}:** {data[category]:,.2f}")
+                st.write(f"- **{category}:** {data[category]:,.2f}")
 
     # Visualizar tabla completa
     st.write("### Tabla Completa:")
@@ -44,13 +44,24 @@ if vista == "Vista Resumen Original":
 elif vista == "Vista Editable con Actualización":
     st.title("Edición de Tabla Interactiva con Recalculo Dinámico")
 
+    # Agregar campo para ingresar el monto total deseado
+    desired_total = st.number_input("Ingresa el monto total deseado:", value=0.0, step=0.01)
+
     # Configuración de AgGrid para edición
     st.write("### Tabla Editable")
     st.write("Edita los valores y ajusta los totales hasta alcanzar el monto deseado.")
-    
+
     gb = GridOptionsBuilder.from_dataframe(df)
-    gb.configure_default_column(editable=True)  # Permitir edición
-    gb.configure_column('Total', editable=False)  # Bloquear la columna Total
+    gb.configure_default_column(editable=True)
+
+    # Configurar la columna 'Total' para que se calcule dinámicamente
+    gb.configure_column('Total', editable=False, valueGetter="""
+        Number(data['Cantidad de Funcionarios']) * Number(data['Costo de Pasaje']) +
+        Number(data['Cantidad de Funcionarios']) * Number(data['Días']) * Number(data['Alojamiento']) +
+        Number(data['Cantidad de Funcionarios']) * Number(data['Días']) * Number(data['Per-diem y Otros']) +
+        Number(data['Cantidad de Funcionarios']) * Number(data['Movilidad'])
+    """, type=["numericColumn"])
+
     grid_options = gb.build()
 
     # Mostrar tabla editable
@@ -64,11 +75,12 @@ elif vista == "Vista Editable con Actualización":
     )
 
     # Datos editados
-    edited_df = grid_response['data']
-    edited_df = pd.DataFrame(edited_df)
+    edited_df = pd.DataFrame(grid_response['data'])
 
-    # Recalcular la columna Total
-    edited_df['Total'] = edited_df.apply(calculate_total, axis=1)
+    # Convertir columnas a numéricas (importante para evitar errores)
+    numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
+    for col in numeric_columns:
+        edited_df[col] = pd.to_numeric(edited_df[col], errors='coerce').fillna(0)
 
     # Resumen por país y categorías (actualizado)
     category_columns = ['Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
@@ -81,11 +93,15 @@ elif vista == "Vista Editable con Actualización":
         with st.expander(f"{country} - Total: {total:,.2f}"):
             st.write("**Detalles por Categoría**")
             for category in category_columns:
-                st.write(f"- **{category.lower()}:** {data[category]:,.2f}")
+                st.write(f"- **{category}:** {data[category]:,.2f}")
 
     # Mostrar el nuevo monto total general
     total_sum = edited_df['Total'].sum()
     st.write(f"### Nuevo Monto Total General: {total_sum:,.2f}")
+
+    # Calcular y mostrar la diferencia respecto al monto deseado
+    difference = desired_total - total_sum
+    st.write(f"### Diferencia para alcanzar el monto deseado: {difference:,.2f}")
 
     # Descargar la tabla modificada
     st.write("### Descargar Tabla Modificada")

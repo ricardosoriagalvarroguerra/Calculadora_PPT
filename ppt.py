@@ -51,8 +51,8 @@ if vista == "Vista Resumen Original":
     st.write("### Tabla Completa:")
     st.dataframe(df)
 
-elif vista == "Vista Editable con Actualización":
-    st.title("Edición de Tabla Interactiva con Recalculo Dinámico")
+elif vista == "DPP 2025":
+    st.title("DPP 2025")
 
     # Establecer el monto total deseado por defecto en 434,707
     desired_total = st.number_input("Ingresa el monto total deseado:", value=434707.0, step=0.01)

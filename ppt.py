@@ -2,12 +2,14 @@ import streamlit as st
 import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder, DataReturnMode, JsCode
 
-# Función para calcular el total dinámicamente (para cálculo inicial)
+# Función para calcular el total dinámicamente
 def calculate_total(row):
-    return (row['Cantidad de Funcionarios'] * row['Costo de Pasaje']) +
-           (row['Cantidad de Funcionarios'] * row['Días'] * row['Alojamiento']) +
-           (row['Cantidad de Funcionarios'] * row['Días'] * row['Per-diem y Otros']) +
-           (row['Cantidad de Funcionarios'] * row['Movilidad'])
+    return (
+        (row['Cantidad de Funcionarios'] * row['Costo de Pasaje']) +
+        (row['Cantidad de Funcionarios'] * row['Días'] * row['Alojamiento']) +
+        (row['Cantidad de Funcionarios'] * row['Días'] * row['Per-diem y Otros']) +
+        (row['Cantidad de Funcionarios'] * row['Movilidad'])
+    )
 
 # Cargar los datos
 file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que este archivo está en el mismo directorio o proporciona la ruta completa
@@ -90,9 +92,12 @@ elif vista == "Vista Editable con Actualización":
 
     # Convertir columnas a numéricas
     numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje', 'Alojamiento',
-                       'Per-diem y Otros', 'Movilidad', 'Total']
+                       'Per-diem y Otros', 'Movilidad']
     for col in numeric_columns:
         edited_df[col] = pd.to_numeric(edited_df[col], errors='coerce').fillna(0)
+
+    # Recalcular la columna 'Total' con los datos editados
+    edited_df['Total'] = edited_df.apply(calculate_total, axis=1)
 
     # Resumen por país y categorías (actualizado)
     category_columns = ['Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']

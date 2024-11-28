@@ -7,7 +7,7 @@ st.title("Edición de Tabla Interactiva - Presupuesto VPO")
 
 # Cargar los datos
 file_path = 'BDD_Ajuste.xlsx'
-df = pd.read_excel(file_path, sheet_name='VPO')
+df = pd.read_excel(file_path, sheet_name='Original_VPO')
 
 # Agregar columna calculada Total basada en la fórmula proporcionada
 def calculate_total(row):

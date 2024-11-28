@@ -1,40 +1,55 @@
 import streamlit as st
 import pandas as pd
-
-# Configuración de la contraseña
-PASSWORD = "mi_contraseña_secreta"
+from st_aggrid import AgGrid, GridOptionsBuilder, DataReturnMode
 
 # Título de la app
-st.title("Resumen y Visualización de Presupuesto - VPO")
+st.title("Edición de Tabla Interactiva - Presupuesto VPO")
 
-# Solicitar contraseña
-password = st.text_input("Introduce la contraseña para acceder", type="password")
+# Cargar los datos
+file_path = 'BDD_Ajuste.xlsx'
+df = pd.read_excel(file_path, sheet_name='VPO')
 
-if password == PASSWORD:
-    # Cargar los datos
-    file_path = 'BDD_Ajuste.xlsx'
-    try:
-        df = pd.read_excel(file_path, sheet_name='Original_VPO')
-    except ValueError:
-        st.error("La hoja 'VPO' no existe en el archivo. Por favor, verifica el archivo.")
-    else:
-        # Calcular los totales por país y categoría
-        category_columns = ['Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
-        df['Total'] = df[category_columns].sum(axis=1)
-        
-        summary_by_country = df.groupby('País')[category_columns + ['Total']].sum()
+# Agregar columna calculada Total basada en la fórmula proporcionada
+def calculate_total(row):
+    return (row['Cantidad de Funcionarios'] * row['Costo de Pasaje']) + \
+           (row['Cantidad de Funcionarios'] * row['Días'] * row['Alojamiento']) + \
+           (row['Cantidad de Funcionarios'] * row['Días'] * row['Per-diem y Otros']) + \
+           (row['Cantidad de Funcionarios'] * row['Movilidad'])
 
-        # Mostrar resumen general
-        st.write("**Resumen General por País:**")
-        for country, data in summary_by_country.iterrows():
-            total = data['Total']
-            with st.expander(f"{country} - Total: {total:,.2f}"):
-                st.write("**Misiones**")
-                for category in category_columns:
-                    st.write(f"- **{category.lower()}:** {data[category]:,.2f}")
-        
-        # Visualizar toda la tabla original
-        st.write("### Tabla Completa:")
-        st.dataframe(df)
-else:
-    st.warning("Por favor, introduce la contraseña correcta para acceder.")
+df['Total'] = df.apply(calculate_total, axis=1)
+
+# Mostrar tabla editable
+st.write("### Tabla Editable")
+st.write("Edita los valores y ajusta los totales hasta alcanzar el monto deseado.")
+
+# Configuración de AgGrid para edición interactiva
+gb = GridOptionsBuilder.from_dataframe(df)
+gb.configure_default_column(editable=True)  # Permitir edición
+gb.configure_column('Total', editable=False)  # Bloquear la columna Total
+grid_options = gb.build()
+
+# Mostrar tabla editable
+grid_response = AgGrid(
+    df,
+    gridOptions=grid_options,
+    data_return_mode=DataReturnMode.AS_INPUT,
+    update_mode='MANUAL',
+    fit_columns_on_grid_load=True,
+    enable_enterprise_modules=False,
+)
+
+# Datos editados
+edited_df = grid_response['data']
+edited_df = pd.DataFrame(edited_df)
+
+# Recalcular la columna Total
+edited_df['Total'] = edited_df.apply(calculate_total, axis=1)
+
+# Mostrar el nuevo monto total general
+total_sum = edited_df['Total'].sum()
+st.write(f"### Nuevo Monto Total General: {total_sum:,.2f}")
+
+# Descargar la tabla editada
+st.write("### Descargar Tabla Modificada")
+csv = edited_df.to_csv(index=False).encode('utf-8')
+st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada.csv", mime="text/csv")

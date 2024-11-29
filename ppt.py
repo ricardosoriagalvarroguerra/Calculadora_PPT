@@ -4,6 +4,10 @@ from st_aggrid import AgGrid, GridOptionsBuilder, DataReturnMode, JsCode
 import plotly.express as px
 import os  # Importación necesaria para manejar archivos y directorios
 
+# Definir las contraseñas directamente en el código
+VPO_PASSWORD = "contraseña_vpo"  # Reemplaza con tu contraseña para VPO
+VPD_PASSWORD = "contraseña_vpd"  # Reemplaza con tu contraseña para VPD
+
 # Función para calcular el total para Misiones VPO y VPD
 def calculate_total_misiones(row):
     return round(
@@ -169,6 +173,13 @@ def crear_dona(df, nombres, valores, titulo, color_map, hole=0.5, height=300, ma
     )
     return fig
 
+# Inicializar variables de estado para autenticación
+if 'authenticated_vpo' not in st.session_state:
+    st.session_state['authenticated_vpo'] = False
+
+if 'authenticated_vpd' not in st.session_state:
+    st.session_state['authenticated_vpd'] = False
+
 # Función para manejar cada página principal
 def handle_page(main_page):
     # Definir los montos deseados para cada sección
@@ -182,6 +193,35 @@ def handle_page(main_page):
             "Consultorías": 130000.0
         }
     }
+
+    # Función para verificar autenticación
+    def authenticate(unidad):
+        if unidad == "VPO":
+            auth_key = 'authenticated_vpo'
+            password = st.sidebar.text_input("Contraseña para VPO", type="password", key="vpo_password")
+            correct_password = VPO_PASSWORD
+        elif unidad == "VPD":
+            auth_key = 'authenticated_vpd'
+            password = st.sidebar.text_input("Contraseña para VPD", type="password", key="vpd_password")
+            correct_password = VPD_PASSWORD
+        else:
+            return False
+
+        if st.sidebar.button("Ingresar", key=f"{unidad}_login"):
+            if password == correct_password:
+                st.session_state[auth_key] = True
+                st.sidebar.success("Contraseña correcta")
+            else:
+                st.sidebar.error("Contraseña incorrecta")
+
+    # Autenticación para VPO y VPD
+    if main_page in ["VPO", "VPD"]:
+        auth_key = 'authenticated_vpo' if main_page == "VPO" else 'authenticated_vpd'
+        if not st.session_state[auth_key]:
+            authenticate(main_page)
+            if not st.session_state[auth_key]:
+                st.warning("Ingresa la contraseña para acceder a esta sección.")
+                st.stop()  # Detiene la ejecución hasta que el usuario se autentique
 
     if main_page == "VPO":
         # Seleccionar Vista: Misiones o Consultorías
@@ -414,10 +454,7 @@ def handle_page(main_page):
 
                 # Resumen por País y Objetivo
                 summary_country = edited_df.groupby('País')['Total'].sum().reset_index()
-                if 'Objetivo' in edited_df.columns:
-                    summary_obj = edited_df[edited_df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
-                else:
-                    summary_obj = pd.DataFrame(columns=['Objetivo', 'Total'])
+                summary_obj = edited_df[edited_df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
 
                 # Crear gráficos de dona actualizados
                 col3, col4 = st.columns(2)
@@ -778,7 +815,7 @@ def handle_page(main_page):
                 for col in numeric_columns:
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
 
-                # Recalcular 'Total'
+                # Recalcular 'Total' si es necesario
                 edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
 
                 # Calcular métricas sin decimales
@@ -978,18 +1015,6 @@ def handle_page(main_page):
 
                 # Guardar datos editados en cache
                 save_to_cache(edited_df, 'VPD', 'Consultorías')
-
-                # Mostrar tabla completa sin decimales
-                st.subheader("Tabla Completa - Consultorías VPD")
-                st.dataframe(
-                    edited_df.style.format({
-                        "Nº": "{:.0f}",
-                        "Monto mensual": "{:,.0f}",
-                        "cantidad meses": "{:.0f}",
-                        "Total": "{:,.0f}"
-                    }),
-                    height=400
-                )
 
                 # Descargar tabla modificada sin decimales
                 st.subheader("Descargar Tabla Modificada - Consultorías VPD")

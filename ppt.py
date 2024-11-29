@@ -946,7 +946,7 @@ def save_to_cache(df, unidad, tipo):
     cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
     df.to_csv(cache_file, index=False)
 
-# Función para crear el consolidado
+# Función para crear el consolidado con MultiIndex en columnas
 def create_consolidado(deseados):
     st.header("Consolidado")
     cache_dir = 'cache'
@@ -962,41 +962,36 @@ def create_consolidado(deseados):
                 actual = df['Total'].sum()
                 deseado = deseados[unidad][tipo]
                 ajuste = deseado - actual
-                row[f"{tipo} - Actual"] = actual
-                row[f"{tipo} - Ajuste"] = ajuste
-                row[f"{tipo} - Deseado"] = deseado
+                row[(tipo, 'Actual')] = actual
+                row[(tipo, 'Ajuste')] = ajuste
+                row[(tipo, 'Deseado')] = deseado
             else:
                 # Si no hay datos, asumimos que el actual es 0
                 deseado = deseados[unidad][tipo]
-                row[f"{tipo} - Actual"] = 0
-                row[f"{tipo} - Ajuste"] = deseado
-                row[f"{tipo} - Deseado"] = deseado
+                row[(tipo, 'Actual')] = 0
+                row[(tipo, 'Ajuste')] = deseado
+                row[(tipo, 'Deseado')] = deseado
         data.append(row)
+    # Crear DataFrame con MultiIndex en columnas
     consolidado_df = pd.DataFrame(data)
+    # Establecer MultiIndex en las columnas
+    consolidado_df.columns = pd.MultiIndex.from_tuples(consolidado_df.columns)
+    consolidado_df.set_index(('Unidad Organizacional', ''), inplace=True)
     
     # Aplicar formato y estilo
     def highlight_zero(val):
         color = 'background-color: #90ee90' if val == 0 else ''
         return color
-    
-    # Aplicar formateo condicional
-    styled_df = consolidado_df.style.applymap(highlight_zero, subset=[f"{tipo} - Ajuste" for tipo in tipos])
-    styled_df = styled_df.format("{:,.0f}", subset=[f"{tipo} - Actual" for tipo in tipos] + [f"{tipo} - Ajuste" for tipo in tipos] + [f"{tipo} - Deseado" for tipo in tipos])
-    
-    # Aplicar estilos al encabezado y celdas
+
+    # Aplicar formateo condicional y estilos
+    styled_df = consolidado_df.style.applymap(highlight_zero, subset=pd.IndexSlice[:, ['Ajuste']])
+    styled_df = styled_df.format("{:,.0f}", na_rep="", subset=pd.IndexSlice[:, ['Actual', 'Ajuste', 'Deseado']])
     styled_df = styled_df.set_table_styles([
-        {
-            'selector': 'th',
-            'props': [('background-color', '#FFFFFF'), ('color', '#000000'), ('font-weight', 'bold')]
-        },
-        {
-            'selector': 'td',
-            'props': [('text-align', 'right')]
-        }
+        {'selector': 'th', 'props': [('background-color', '#FFFFFF'), ('color', '#000000'), ('font-weight', 'bold')]},
+        {'selector': 'td', 'props': [('text-align', 'right')]},
+        {'selector': 'th.col_heading.level0', 'props': [('text-align', 'center')]},
+        {'selector': 'th.col_heading.level1', 'props': [('text-align', 'center')]},
     ])
-    
-    # Ajustar el ancho de las columnas
-    styled_df = styled_df.set_properties(**{'width': '120px'})
     
     # Mostrar la tabla estilizada
     st.table(styled_df)

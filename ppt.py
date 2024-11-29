@@ -52,7 +52,7 @@ def handle_page(main_page):
         view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPO_view")
         
         if view == "Misiones":
-            page = st.sidebar.selectbox("Selecciona una subpágina:", ("Resumen Original", "DPP 2025"), key="VPO_Misiones_page")
+            page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPO_Misiones_page")
             file_path = 'BDD_Ajuste.xlsx'
             sheet_name = 'Original_VPO'
             
@@ -108,9 +108,9 @@ def handle_page(main_page):
                 'Uruguay': '#1d3557'
             }
             
-            # Página Resumen Original para Misiones VPO
-            if page == "Resumen Original":
-                st.header("VPO - Misiones: Resumen Original")
+            # Página Requerimiento del área para Misiones VPO
+            if page == "Requerimiento del área":
+                st.header("VPO - Misiones: Requerimiento del área")
                 
                 # Resumen por País
                 summary_country = df.groupby('País')['Total'].sum().reset_index()
@@ -335,7 +335,7 @@ def handle_page(main_page):
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_misiones_vpo.csv", mime="text/csv")
         
         elif view == "Consultorías":
-            page = st.sidebar.selectbox("Selecciona una subpágina:", ("Resumen Original", "DPP 2025"), key="VPO_Consultorias_page")
+            page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPO_Consultorias_page")
             file_path = 'BDD_Ajuste.xlsx'
             sheet_name = 'Consultores_VPO'
             
@@ -369,9 +369,9 @@ def handle_page(main_page):
             if 'Total' not in df.columns or df['Total'].sum() == 0:
                 df['Total'] = df.apply(calculate_total_consultorias, axis=1)
             
-            # Página Resumen Original para Consultorías VPO
-            if page == "Resumen Original":
-                st.header("VPO - Consultorías: Resumen Original")
+            # Página Requerimiento del área para Consultorías VPO
+            if page == "Requerimiento del área":
+                st.header("VPO - Consultorías: Requerimiento del área")
                 
                 # Mostrar tabla completa sin decimales
                 st.subheader("Tabla Completa - Consultorías VPO")
@@ -470,7 +470,7 @@ def handle_page(main_page):
         view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPD_view")
         
         if view == "Misiones":
-            page = st.sidebar.selectbox("Selecciona una subpágina:", ("Resumen Original", "DPP 2025"), key="VPD_Misiones_page")
+            page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPD_Misiones_page")
             file_path = 'BDD_Ajuste.xlsx'
             sheet_name = 'Misiones_VPD'
     
@@ -506,9 +506,9 @@ def handle_page(main_page):
             if 'Total' not in df.columns or df['Total'].sum() == 0:
                 df['Total'] = df.apply(calculate_total_misiones, axis=1)
     
-            # Página Resumen Original para Misiones VPD
-            if page == "Resumen Original":
-                st.header("VPD - Misiones: Resumen Original")
+            # Página Requerimiento del área para Misiones VPD
+            if page == "Requerimiento del área":
+                st.header("VPD - Misiones: Requerimiento del área")
     
                 # Mostrar tabla completa sin decimales
                 st.subheader("Tabla Completa - Misiones VPD")
@@ -613,7 +613,7 @@ def handle_page(main_page):
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_misiones_vpd.csv", mime="text/csv")
         
         elif view == "Consultorías":
-            page = st.sidebar.selectbox("Selecciona una subpágina:", ("Resumen Original", "DPP 2025"), key="VPD_Consultorias_page")
+            page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPD_Consultorias_page")
             file_path = 'BDD_Ajuste.xlsx'
             sheet_name = 'Consultores_VPD'
     
@@ -652,9 +652,9 @@ def handle_page(main_page):
             # Asignar colores únicos a cada VPD/AREA
             vpd_area_color_map = {area: px.colors.qualitative.Pastel[i % len(px.colors.qualitative.Pastel)] for i, area in enumerate(vpd_area_unique)}
     
-            # Página Resumen Original para Consultorías VPD
-            if page == "Resumen Original":
-                st.header("VPD - Consultorías: Resumen Original")
+            # Página Requerimiento del área para Consultorías VPD
+            if page == "Requerimiento del área":
+                st.header("VPD - Consultorías: Requerimiento del área")
                 
                 # Resumen por VPD/AREA
                 summary_vpd_area = df.groupby('VPD/AREA')['Total'].sum().reset_index()

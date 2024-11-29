@@ -11,20 +11,28 @@ def calculate_total(row):
         (row['Cantidad de Funcionarios'] * row['Movilidad'])
     )
 
-# Columnas numéricas y de categorías
-numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje', 'Alojamiento',
-                   'Per-diem y Otros', 'Movilidad', 'Total']
+# Definición de columnas numéricas y de categorías
+numeric_columns = [
+    'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+    'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total'
+]
 category_columns = ['Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
-all_numeric_columns = numeric_columns + category_columns
+all_numeric_columns = numeric_columns.copy()  # Evitar duplicados
 
-# Cargar los datos asegurando los tipos numéricos
+# Ruta al archivo Excel
 file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que este archivo está en el mismo directorio o proporciona la ruta completa
+
+# Cargar los datos
 df = pd.read_excel(file_path, sheet_name='Original_VPO')
 
-# Eliminar espacios en blanco y convertir a numérico
+# Limpiar y convertir las columnas numéricas
 for col in all_numeric_columns:
-    df[col] = df[col].astype(str).str.replace(',', '').str.strip()
-    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    if col in df.columns:
+        df[col] = df[col].astype(str).str.replace(',', '').str.strip()
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    else:
+        st.error(f"La columna '{col}' no existe en el archivo Excel.")
+        st.stop()
 
 # Calcular la columna 'Total' inicialmente
 df['Total'] = df.apply(calculate_total, axis=1)
@@ -32,12 +40,14 @@ df['Total'] = df.apply(calculate_total, axis=1)
 # Monto total deseado (fijo y no editable)
 desired_total = 434707.0
 
-# Estilo de la aplicación
+# Configuración de la página
 st.set_page_config(page_title="Calculadora de Presupuesto", layout="wide")
+
+# Estilo personalizado para la aplicación
 st.markdown("""
 <style>
     .main {
-        background-color: #f0f2f6;
+        background-color: #ffffff;
     }
     .stButton>button {
         color: white;
@@ -46,16 +56,20 @@ st.markdown("""
     .stNumberInput>div>input {
         background-color: #f0f2f6;
     }
+    .stDataFrame div, .stDataFrame th, .stDataFrame td {
+        text-align: right;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Selector de vista
+# Selector de vista en la barra lateral
 st.sidebar.title("Selector de Vista")
 vista = st.sidebar.radio(
     "Elige una vista:",
     ("Resumen Original", "Edición y Ajuste")
 )
 
+# Vista Resumen Original
 if vista == "Resumen Original":
     st.title("Resumen General")
 
@@ -64,16 +78,24 @@ if vista == "Resumen Original":
 
     # Convertir las columnas a numéricas en el resumen
     for col in category_columns + ['Total']:
-        summary_by_country[col] = pd.to_numeric(summary_by_country[col], errors='coerce').fillna(0)
+        if col in summary_by_country.columns:
+            summary_by_country[col] = pd.to_numeric(summary_by_country[col], errors='coerce').fillna(0)
+        else:
+            st.error(f"La columna '{col}' no existe en el resumen por país.")
+            st.stop()
 
-    # Mostrar resumen por país en una tabla
+    # Mostrar resumen por país en una tabla con formato
     st.subheader("Resumen por País")
-    st.dataframe(summary_by_country.style.format("{:,.2f}"), height=400)
+    st.dataframe(
+        summary_by_country.style.format({col: "{:,.2f}" for col in category_columns + ['Total']}),
+        height=400
+    )
 
-    # Visualizar tabla completa
+    # Visualizar tabla completa con formato
     st.subheader("Tabla Completa")
     st.dataframe(df.style.format("{:,.2f}"), height=400)
 
+# Vista Edición y Ajuste
 elif vista == "Edición y Ajuste":
     st.title("Ajuste de Presupuesto")
 
@@ -117,10 +139,19 @@ elif vista == "Edición y Ajuste":
     # Datos editados
     edited_df = pd.DataFrame(grid_response['data'])
 
-    # Eliminar espacios en blanco y convertir a numérico en 'edited_df'
+    # Verificar si 'País' está presente
+    if 'País' not in edited_df.columns:
+        st.error("La columna 'País' está ausente en los datos editados.")
+        st.stop()
+
+    # Limpiar y convertir las columnas numéricas en 'edited_df'
     for col in all_numeric_columns:
-        edited_df[col] = edited_df[col].astype(str).str.replace(',', '').str.strip()
-        edited_df[col] = pd.to_numeric(edited_df[col], errors='coerce').fillna(0)
+        if col in edited_df.columns:
+            edited_df[col] = edited_df[col].astype(str).str.replace(',', '').str.strip()
+            edited_df[col] = pd.to_numeric(edited_df[col], errors='coerce').fillna(0)
+        else:
+            st.error(f"La columna '{col}' no existe en los datos editados.")
+            st.stop()
 
     # Recalcular la columna 'Total' con los datos editados
     edited_df['Total'] = edited_df.apply(calculate_total, axis=1)
@@ -129,6 +160,7 @@ elif vista == "Edición y Ajuste":
     total_sum = edited_df['Total'].sum()
     difference = desired_total - total_sum
 
+    # Mostrar las métricas de manera destacada
     col1, col2 = st.columns(2)
     col1.metric("Nuevo Monto Total General (USD)", f"{total_sum:,.2f}")
     col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.2f}")
@@ -136,13 +168,20 @@ elif vista == "Edición y Ajuste":
     # Resumen por país y categorías (actualizado)
     summary_by_country_edited = edited_df.groupby('País')[category_columns + ['Total']].sum().reset_index()
 
-    # Convertir columnas a numéricas en 'summary_by_country_edited'
+    # Convertir las columnas a numéricas en el resumen actualizado
     for col in category_columns + ['Total']:
-        summary_by_country_edited[col] = pd.to_numeric(summary_by_country_edited[col], errors='coerce').fillna(0)
+        if col in summary_by_country_edited.columns:
+            summary_by_country_edited[col] = pd.to_numeric(summary_by_country_edited[col], errors='coerce').fillna(0)
+        else:
+            st.error(f"La columna '{col}' no existe en el resumen por país actualizado.")
+            st.stop()
 
-    # Mostrar resumen por país
+    # Mostrar resumen por país actualizado en una tabla con formato
     st.subheader("Resumen por País Actualizado")
-    st.dataframe(summary_by_country_edited.style.format("{:,.2f}"), height=400)
+    st.dataframe(
+        summary_by_country_edited.style.format({col: "{:,.2f}" for col in category_columns + ['Total']}),
+        height=400
+    )
 
     # Descargar la tabla modificada
     st.subheader("Descargar Tabla Modificada")

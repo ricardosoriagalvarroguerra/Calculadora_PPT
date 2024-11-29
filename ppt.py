@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder, DataReturnMode, JsCode
+import plotly.express as px
 
 # Función para calcular el total dinámicamente
 def calculate_total(row):
@@ -72,7 +73,7 @@ vista = st.sidebar.radio(
 # Vista Resumen Original
 if vista == "Resumen Original":
     st.title("Resumen General")
-
+    
     # Resumen por país y categorías
     summary_by_country = df.groupby('País')[category_columns + ['Total']].sum().reset_index()
 
@@ -84,12 +85,34 @@ if vista == "Resumen Original":
             st.error(f"La columna '{col}' no existe en el resumen por país.")
             st.stop()
 
-    # Mostrar resumen por país en una tabla con formato
-    st.subheader("Resumen por País")
-    st.dataframe(
-        summary_by_country.style.format({col: "{:,.2f}" for col in category_columns + ['Total']}),
-        height=400
-    )
+    # Mostrar resumen por país en gráficos de dona
+    st.subheader("Distribución de Costos por País")
+
+    # Determinar el número de columnas por fila (ejemplo: 3)
+    num_cols_per_row = 3
+    num_countries = summary_by_country.shape[0]
+    rows = (num_countries // num_cols_per_row) + 1
+
+    for i in range(rows):
+        cols = st.columns(num_cols_per_row)
+        for j in range(num_cols_per_row):
+            country_index = i * num_cols_per_row + j
+            if country_index < num_countries:
+                country_data = summary_by_country.iloc[country_index]
+                country_name = country_data['País']
+                values = country_data[category_columns].values
+                labels = category_columns
+
+                fig = px.pie(
+                    names=labels,
+                    values=values,
+                    hole=0.4,
+                    title=country_name,
+                    color=labels,
+                    color_discrete_sequence=px.colors.qualitative.Pastel
+                )
+
+                cols[j].plotly_chart(fig, use_container_width=True)
 
     # Visualizar tabla completa con formato
     st.subheader("Tabla Completa")
@@ -176,12 +199,34 @@ elif vista == "Edición y Ajuste":
             st.error(f"La columna '{col}' no existe en el resumen por país actualizado.")
             st.stop()
 
-    # Mostrar resumen por país actualizado en una tabla con formato
-    st.subheader("Resumen por País Actualizado")
-    st.dataframe(
-        summary_by_country_edited.style.format({col: "{:,.2f}" for col in category_columns + ['Total']}),
-        height=400
-    )
+    # Mostrar resumen por país actualizado en gráficos de dona
+    st.subheader("Distribución de Costos por País Actualizado")
+
+    # Determinar el número de columnas por fila (ejemplo: 3)
+    num_cols_per_row = 3
+    num_countries = summary_by_country_edited.shape[0]
+    rows = (num_countries // num_cols_per_row) + 1
+
+    for i in range(rows):
+        cols = st.columns(num_cols_per_row)
+        for j in range(num_cols_per_row):
+            country_index = i * num_cols_per_row + j
+            if country_index < num_countries:
+                country_data = summary_by_country_edited.iloc[country_index]
+                country_name = country_data['País']
+                values = country_data[category_columns].values
+                labels = category_columns
+
+                fig = px.pie(
+                    names=labels,
+                    values=values,
+                    hole=0.4,
+                    title=country_name,
+                    color=labels,
+                    color_discrete_sequence=px.colors.qualitative.Pastel
+                )
+
+                cols[j].plotly_chart(fig, use_container_width=True)
 
     # Descargar la tabla modificada
     st.subheader("Descargar Tabla Modificada")

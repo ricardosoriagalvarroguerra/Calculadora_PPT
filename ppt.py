@@ -3,7 +3,7 @@ import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder, DataReturnMode, JsCode
 import plotly.express as px
 
-# Función para calcular el total para Misiones
+# Función para calcular el total para Misiones VPO y VPD
 def calculate_total_misiones(row):
     return (
         (row['Cantidad de Funcionarios'] * row['Costo de Pasaje']) +
@@ -12,7 +12,7 @@ def calculate_total_misiones(row):
         (row['Cantidad de Funcionarios'] * row['Movilidad'])
     )
 
-# Función para calcular el total para Consultorías
+# Función para calcular el total para Consultorías VPO y VPD
 def calculate_total_consultorias(row):
     return row['Nº'] * row['Monto mensual'] * row['cantidad meses']
 
@@ -86,7 +86,7 @@ def handle_page(main_page):
             
             # Verificar valores en 'Objetivo'
             valid_objetivos = ['R', 'E']
-            if not df['Objetivo'].dropna().isin(valid_objetivos).all():
+            if 'Objetivo' in df.columns and not df['Objetivo'].dropna().isin(valid_objetivos).all():
                 st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de Objetivo.")
             
             # Calcular 'Total' si es necesario
@@ -231,8 +231,8 @@ def handle_page(main_page):
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
                 
                 # Verificar valores en 'Objetivo'
-                if not edited_df['Objetivo'].dropna().isin(['R', 'E']).all():
-                    st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de Operación.")
+                if 'Objetivo' in edited_df.columns and not edited_df['Objetivo'].dropna().isin(['R', 'E']).all():
+                    st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de Objetivo.")
                 
                 # Recalcular 'Total' si es necesario
                 edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
@@ -243,12 +243,15 @@ def handle_page(main_page):
                 
                 # Mostrar métricas
                 col1, col2 = st.columns(2)
-                col1.metric("Nuevo Monto Total General (USD)", f"{total_sum:,.2f}")
+                col1.metric("Monto Actual (USD)", f"{total_sum:,.2f}")
                 col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.2f}")
                 
                 # Resumen por País y Objetivo
                 summary_country = edited_df.groupby('País')['Total'].sum().reset_index()
-                summary_obj = edited_df[edited_df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
+                if 'Objetivo' in edited_df.columns:
+                    summary_obj = edited_df[edited_df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
+                else:
+                    summary_obj = pd.DataFrame(columns=['Objetivo', 'Total'])
                 
                 # Crear gráficos de dona actualizados
                 col3, col4 = st.columns(2)
@@ -261,7 +264,13 @@ def handle_page(main_page):
                     hole=0.4,
                     title="Montos Totales por País (Actualizado)",
                     color='País',
-                    color_discrete_map=pais_color_map
+                    color_discrete_map={
+                        'Argentina': '#457b9d',
+                        'Bolivia': '#3a5a40',
+                        'Brasil': '#ffb703',
+                        'Paraguay': '#d62828',
+                        'Uruguay': '#1d3557'
+                    }
                 )
                 fig3.update_layout(
                     showlegend=True,
@@ -278,278 +287,37 @@ def handle_page(main_page):
                 col3.plotly_chart(fig3, use_container_width=True)
                 
                 # Gráfico de Dona: Distribución por Objetivo R y E (Actualizado)
-                fig4 = px.pie(
-                    summary_obj,
-                    names='Objetivo',
-                    values='Total',
-                    hole=0.4,
-                    title="Distribución por Objetivo R y E (Actualizado)",
-                    color='Objetivo',
-                    color_discrete_map=objetivo_color_map
-                )
-                fig4.update_layout(
-                    showlegend=True,
-                    legend=dict(
-                        orientation="v",
-                        yanchor="top",
-                        y=1,
-                        xanchor="left",
-                        x=-0.1
-                    ),
-                    margin=dict(t=60, b=20, l=150, r=20),
-                    height=300
-                )
-                col4.plotly_chart(fig4, use_container_width=True)
+                if not summary_obj.empty:
+                    fig4 = px.pie(
+                        summary_obj,
+                        names='Objetivo',
+                        values='Total',
+                        hole=0.4,
+                        title="Distribución por Objetivo R y E (Actualizado)",
+                        color='Objetivo',
+                        color_discrete_map={
+                            'E': '#a4161a',
+                            'R': '#d3d3d3'
+                        }
+                    )
+                    fig4.update_layout(
+                        showlegend=True,
+                        legend=dict(
+                            orientation="v",
+                            yanchor="top",
+                            y=1,
+                            xanchor="left",
+                            x=-0.1
+                        ),
+                        margin=dict(t=60, b=20, l=150, r=20),
+                        height=300
+                    )
+                    col4.plotly_chart(fig4, use_container_width=True)
                 
                 # Descargar tabla modificada
                 st.subheader("Descargar Tabla Modificada - Misiones VPO")
                 csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_misiones_vpo.csv", mime="text/csv")
-        
-        elif view == "Consultorías":
-            page = st.sidebar.selectbox("Selecciona una subpágina:", ("Resumen Original", "DPP 2025"), key="VPO_Consultorias_page")
-            file_path = 'BDD_Ajuste.xlsx'
-            sheet_name = 'Consultores_VPO'
-            
-            # Cargar datos
-            try:
-                df = pd.read_excel(file_path, sheet_name=sheet_name)
-            except FileNotFoundError:
-                st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                st.stop()
-            except Exception as e:
-                st.error(f"Error al leer el archivo Excel: {e}")
-                st.stop()
-            
-            # Verificar columnas
-            required_columns = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Objetivo', 'tipo']
-            for col in required_columns:
-                if col not in df.columns:
-                    st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
-                    st.stop()
-            
-            # Limpiar y convertir columnas numéricas
-            numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-            for col in numeric_columns:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-                else:
-                    st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
-                    st.stop()
-            
-            # Verificar valores en 'Objetivo'
-            valid_objetivos = ['R', 'E']
-            if not df['Objetivo'].dropna().isin(valid_objetivos).all():
-                st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de Objetivo.")
-            
-            # Calcular 'Total' si es necesario
-            if 'Total' not in df.columns or df['Total'].sum() == 0:
-                df['Total'] = df.apply(calculate_total_consultorias, axis=1)
-            
-            # Definir paleta de colores para Objetivo
-            objetivo_color_map = {
-                'E': '#a4161a',
-                'R': '#d3d3d3'
-            }
-            
-            # Definir paleta de colores para Tipo (VPO Consultorías)
-            tipo_color_map_vpo = px.colors.qualitative.Pastel
-            tipo_unique = df['tipo'].unique()
-            tipo_color_mapping = {tipo: tipo_color_map_vpo[i % len(tipo_color_map_vpo)] for i, tipo in enumerate(tipo_unique)}
-            
-            # Página Resumen Original para Consultorías VPO
-            if page == "Resumen Original":
-                st.header("VPO - Consultorías: Resumen Original")
-                
-                # Resumen por Objetivo
-                summary_obj = df[df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
-                
-                # Resumen por Tipo
-                summary_tipo = df.groupby('tipo')['Total'].sum().reset_index()
-                
-                # Crear gráficos de dona
-                col1, col2 = st.columns(2)
-                
-                # Gráfico de Dona: Distribución por Objetivo R y E
-                fig1 = px.pie(
-                    summary_obj,
-                    names='Objetivo',
-                    values='Total',
-                    hole=0.4,
-                    title="Distribución por Objetivo R y E",
-                    color='Objetivo',
-                    color_discrete_map=objetivo_color_map
-                )
-                fig1.update_layout(
-                    showlegend=True,
-                    legend=dict(
-                        orientation="v",
-                        yanchor="top",
-                        y=1,
-                        xanchor="left",
-                        x=-0.1
-                    ),
-                    margin=dict(t=60, b=20, l=150, r=20),
-                    height=300
-                )
-                col1.plotly_chart(fig1, use_container_width=True)
-                
-                # Gráfico de Dona: Distribución por Tipo
-                fig2 = px.pie(
-                    summary_tipo,
-                    names='tipo',
-                    values='Total',
-                    hole=0.4,
-                    title="Distribución por Tipo",
-                    color='tipo',
-                    color_discrete_map=tipo_color_mapping
-                )
-                fig2.update_layout(
-                    showlegend=True,
-                    legend=dict(
-                        orientation="v",
-                        yanchor="top",
-                        y=1,
-                        xanchor="left",
-                        x=-0.1
-                    ),
-                    margin=dict(t=60, b=20, l=150, r=20),
-                    height=300
-                )
-                col2.plotly_chart(fig2, use_container_width=True)
-                
-                # Mostrar tabla completa
-                st.subheader("Tabla Completa - Consultorías VPO")
-                st.dataframe(df.style.format({"Total": "{:,.2f}"}), height=400)
-            
-            # Página DPP 2025 para Consultorías VPO
-            elif page == "DPP 2025":
-                st.header("VPO - Consultorías: DPP 2025")
-                
-                # Monto Total Deseado
-                desired_total = 469700.0
-                st.subheader(f"Monto Total Deseado: {desired_total:,.2f} USD")
-                
-                st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
-                
-                # Configuración de AgGrid para edición
-                gb = GridOptionsBuilder.from_dataframe(df)
-                gb.configure_default_column(editable=True, groupable=True)
-                
-                # Configurar la columna 'Total' para cálculo dinámico
-                gb.configure_column('Total', editable=False, valueGetter=JsCode("""
-                    function(params) {
-                        return Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses']);
-                    }
-                """), type=["numericColumn"], valueFormatter="x.toLocaleString()")
-                
-                # Personalizar apariencia de la tabla
-                gb.configure_grid_options(domLayout='normal')
-                grid_options = gb.build()
-                
-                # Mostrar tabla editable
-                grid_response = AgGrid(
-                    df,
-                    gridOptions=grid_options,
-                    data_return_mode=DataReturnMode.FILTERED,
-                    update_mode='MODEL_CHANGED',
-                    fit_columns_on_grid_load=False,
-                    height=400,
-                    width='100%',
-                    enable_enterprise_modules=False,
-                    allow_unsafe_jscode=True,
-                    theme='alpine'
-                )
-                
-                # Obtener datos editados
-                edited_df = pd.DataFrame(grid_response['data'])
-                
-                # Verificar columnas esenciales
-                essential_cols = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Objetivo', 'tipo', 'Total']
-                for col in essential_cols:
-                    if col not in edited_df.columns:
-                        st.error(f"La columna '{col}' está ausente en los datos editados.")
-                        st.stop()
-                
-                # Limpiar y convertir columnas numéricas
-                for col in numeric_columns:
-                    edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-                
-                # Verificar valores en 'Objetivo'
-                if not edited_df['Objetivo'].dropna().isin(['R', 'E']).all():
-                    st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de Objetivo.")
-                
-                # Recalcular 'Total' si es necesario
-                edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
-                
-                # Calcular métricas
-                total_sum = edited_df['Total'].sum()
-                difference = desired_total - total_sum
-                
-                # Mostrar métricas
-                col1, col2 = st.columns(2)
-                col1.metric("Nuevo Monto Total General (USD)", f"{total_sum:,.2f}")
-                col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.2f}")
-                
-                # Resumen por Objetivo y Tipo
-                summary_obj = edited_df[edited_df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
-                summary_tipo = edited_df.groupby('tipo')['Total'].sum().reset_index()
-                
-                # Crear gráficos de dona actualizados
-                col3, col4 = st.columns(2)
-                
-                # Gráfico de Dona: Distribución por Objetivo R y E (Actualizado)
-                fig3 = px.pie(
-                    summary_obj,
-                    names='Objetivo',
-                    values='Total',
-                    hole=0.4,
-                    title="Distribución por Objetivo R y E (Actualizado)",
-                    color='Objetivo',
-                    color_discrete_map=objetivo_color_map
-                )
-                fig3.update_layout(
-                    showlegend=True,
-                    legend=dict(
-                        orientation="v",
-                        yanchor="top",
-                        y=1,
-                        xanchor="left",
-                        x=-0.1
-                    ),
-                    margin=dict(t=60, b=20, l=150, r=20),
-                    height=300
-                )
-                col3.plotly_chart(fig3, use_container_width=True)
-                
-                # Gráfico de Dona: Distribución por Tipo (Actualizado)
-                fig4 = px.pie(
-                    summary_tipo,
-                    names='tipo',
-                    values='Total',
-                    hole=0.4,
-                    title="Distribución por Tipo (Actualizado)",
-                    color='tipo',
-                    color_discrete_map=tipo_color_mapping
-                )
-                fig4.update_layout(
-                    showlegend=True,
-                    legend=dict(
-                        orientation="v",
-                        yanchor="top",
-                        y=1,
-                        xanchor="left",
-                        x=-0.1
-                    ),
-                    margin=dict(t=60, b=20, l=150, r=20),
-                    height=300
-                )
-                col4.plotly_chart(fig4, use_container_width=True)
-                
-                # Descargar tabla modificada
-                st.subheader("Descargar Tabla Modificada - Consultorías VPO")
-                csv = edited_df.to_csv(index=False).encode('utf-8')
-                st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_consultorias_vpo.csv", mime="text/csv")
     
     elif main_page == "VPD":
         # Seleccionar Vista: Misiones o Consultorías
@@ -715,7 +483,7 @@ def handle_page(main_page):
                 
                 # Verificar columnas esenciales
                 essential_cols = ['País', 'Operación', 'VPD/AREA', 'Cantidad de Funcionarios', 'Días', 
-                                  'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Objetivo', 'Total']
+                                  'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
                 for col in essential_cols:
                     if col not in edited_df.columns:
                         st.error(f"La columna '{col}' está ausente en los datos editados.")
@@ -725,15 +493,7 @@ def handle_page(main_page):
                 for col in numeric_columns:
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
                 
-                # Definir paleta de colores para Operación (actualizada si hay nuevos)
-                operaciones_unique_edited = edited_df['Operación'].unique()
-                operacion_color_map_edited = {op: operacion_color_map.get(op, '#CCCCCC') for op in operaciones_unique_edited}
-                
-                # Verificar valores en 'Objetivo'
-                if not edited_df['Objetivo'].dropna().isin(['R', 'E']).all():
-                    st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de Operación.")
-                
-                # Recalcular 'Total' si es necesario
+                # Recalcular 'Total'
                 edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
                 
                 # Calcular métricas
@@ -760,7 +520,7 @@ def handle_page(main_page):
                     hole=0.4,
                     title="Montos Totales por Operación (Actualizado)",
                     color='Operación',
-                    color_discrete_map=operacion_color_map_edited
+                    color_discrete_map=operacion_color_map
                 )
                 fig3.update_layout(
                     showlegend=True,
@@ -814,7 +574,7 @@ def handle_page(main_page):
         elif view == "Consultorías":
             page = st.sidebar.selectbox("Selecciona una subpágina:", ("Resumen Original", "DPP 2025"), key="VPD_Consultorias_page")
             file_path = 'BDD_Ajuste.xlsx'
-            sheet_name = 'Consultorías_VPD'
+            sheet_name = 'Consultores_VPD'
             
             # Cargar datos
             try:
@@ -827,7 +587,7 @@ def handle_page(main_page):
                 st.stop()
             
             # Verificar columnas
-            required_columns = ['Cargo', 'VPD/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Objetivo', 'tipo']
+            required_columns = ['Cargo', 'VPD/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
             for col in required_columns:
                 if col not in df.columns:
                     st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
@@ -841,11 +601,6 @@ def handle_page(main_page):
                 else:
                     st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
                     st.stop()
-            
-            # Verificar valores en 'Objetivo'
-            valid_objetivos = ['R', 'E']
-            if not df['Objetivo'].dropna().isin(valid_objetivos).all():
-                st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de VPD/AREA.")
             
             # Calcular 'Total' si es necesario
             if 'Total' not in df.columns or df['Total'].sum() == 0:
@@ -937,7 +692,7 @@ def handle_page(main_page):
                 edited_df = pd.DataFrame(grid_response['data'])
                 
                 # Verificar columnas esenciales
-                essential_cols = ['Cargo', 'VPD/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Objetivo', 'tipo', 'Total']
+                essential_cols = ['Cargo', 'VPD/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
                 for col in essential_cols:
                     if col not in edited_df.columns:
                         st.error(f"La columna '{col}' está ausente en los datos editados.")
@@ -947,15 +702,7 @@ def handle_page(main_page):
                 for col in numeric_columns:
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
                 
-                # Definir paleta de colores para VPD/AREA (actualizada si hay nuevos)
-                vpd_area_unique_edited = edited_df['VPD/AREA'].unique()
-                vpd_area_color_map_edited = {area: vpd_area_color_map.get(area, '#CCCCCC') for area in vpd_area_unique_edited}
-                
-                # Verificar valores en 'Objetivo'
-                if not edited_df['Objetivo'].dropna().isin(['R', 'E']).all():
-                    st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de VPD/AREA.")
-                
-                # Recalcular 'Total' si es necesario
+                # Recalcular 'Total'
                 edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
                 
                 # Calcular métricas
@@ -981,7 +728,7 @@ def handle_page(main_page):
                     hole=0.4,
                     title="Distribución por VPD/AREA (Actualizado)",
                     color='VPD/AREA',
-                    color_discrete_map=vpd_area_color_map_edited
+                    color_discrete_map=vpd_area_color_map
                 )
                 fig3.update_layout(
                     showlegend=True,

@@ -24,7 +24,14 @@ all_numeric_columns = numeric_columns.copy()  # Evitar duplicados
 file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que este archivo está en el mismo directorio o proporciona la ruta completa
 
 # Cargar los datos
-df = pd.read_excel(file_path, sheet_name='Original_VPO')
+try:
+    df = pd.read_excel(file_path, sheet_name='Original_VPO')
+except FileNotFoundError:
+    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
+    st.stop()
+except Exception as e:
+    st.error(f"Error al leer el archivo Excel: {e}")
+    st.stop()
 
 # Limpiar y convertir las columnas numéricas
 for col in all_numeric_columns:
@@ -40,6 +47,14 @@ df['Total'] = df.apply(calculate_total, axis=1)
 
 # Monto total deseado (fijo y no editable)
 desired_total = 434707.0
+
+# Definir la paleta de colores
+color_mapping = {
+    'Costo de Pasaje': '#161a1d',
+    'Alojamiento': '#ba181b',
+    'Per-diem y Otros': '#d3d3d3',
+    'Movilidad': '#660708'
+}
 
 # Configuración de la página
 st.set_page_config(page_title="Calculadora de Presupuesto", layout="wide")
@@ -73,7 +88,7 @@ vista = st.sidebar.radio(
 # Vista Resumen Original
 if vista == "Resumen Original":
     st.title("Resumen General")
-    
+
     # Resumen por país y categorías
     summary_by_country = df.groupby('País')[category_columns + ['Total']].sum().reset_index()
 
@@ -91,7 +106,7 @@ if vista == "Resumen Original":
     # Determinar el número de columnas por fila (ejemplo: 3)
     num_cols_per_row = 3
     num_countries = summary_by_country.shape[0]
-    rows = (num_countries // num_cols_per_row) + 1
+    rows = (num_countries // num_cols_per_row) + (num_countries % num_cols_per_row > 0)
 
     for i in range(rows):
         cols = st.columns(num_cols_per_row)
@@ -103,13 +118,21 @@ if vista == "Resumen Original":
                 values = country_data[category_columns].values
                 labels = category_columns
 
+                # Crear gráfico de dona
                 fig = px.pie(
                     names=labels,
                     values=values,
                     hole=0.4,
                     title=country_name,
                     color=labels,
-                    color_discrete_sequence=px.colors.qualitative.Pastel
+                    color_discrete_map=color_mapping,
+                    showlegend=False
+                )
+
+                # Ajustar tamaño del gráfico
+                fig.update_layout(
+                    margin=dict(t=40, b=20, l=20, r=20),
+                    height=250
                 )
 
                 cols[j].plotly_chart(fig, use_container_width=True)
@@ -170,7 +193,9 @@ elif vista == "Edición y Ajuste":
     # Limpiar y convertir las columnas numéricas en 'edited_df'
     for col in all_numeric_columns:
         if col in edited_df.columns:
+            # Eliminar comas y espacios en blanco
             edited_df[col] = edited_df[col].astype(str).str.replace(',', '').str.strip()
+            # Convertir a numérico
             edited_df[col] = pd.to_numeric(edited_df[col], errors='coerce').fillna(0)
         else:
             st.error(f"La columna '{col}' no existe en los datos editados.")
@@ -205,7 +230,7 @@ elif vista == "Edición y Ajuste":
     # Determinar el número de columnas por fila (ejemplo: 3)
     num_cols_per_row = 3
     num_countries = summary_by_country_edited.shape[0]
-    rows = (num_countries // num_cols_per_row) + 1
+    rows = (num_countries // num_cols_per_row) + (num_countries % num_cols_per_row > 0)
 
     for i in range(rows):
         cols = st.columns(num_cols_per_row)
@@ -217,13 +242,21 @@ elif vista == "Edición y Ajuste":
                 values = country_data[category_columns].values
                 labels = category_columns
 
+                # Crear gráfico de dona
                 fig = px.pie(
                     names=labels,
                     values=values,
                     hole=0.4,
                     title=country_name,
                     color=labels,
-                    color_discrete_sequence=px.colors.qualitative.Pastel
+                    color_discrete_map=color_mapping,
+                    showlegend=False
+                )
+
+                # Ajustar tamaño del gráfico
+                fig.update_layout(
+                    margin=dict(t=40, b=20, l=20, r=20),
+                    height=250
                 )
 
                 cols[j].plotly_chart(fig, use_container_width=True)

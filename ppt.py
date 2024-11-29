@@ -17,7 +17,7 @@ def calculate_total_consultorias(row):
     return row['Nº'] * row['Monto mensual'] * row['cantidad meses']
 
 # Configuración de la página
-st.set_page_config(page_title="VPO y VPD", layout="wide")
+st.set_page_config(page_title="FONPLATA", layout="wide")
 
 # Estilo personalizado para la aplicación
 st.markdown("""
@@ -169,9 +169,9 @@ def handle_page(main_page):
                 )
                 col2.plotly_chart(fig2, use_container_width=True)
                 
-                # Mostrar tabla completa
+                # Mostrar tabla completa sin decimales
                 st.subheader("Tabla Completa - Misiones VPO")
-                st.dataframe(df.style.format({"Total": "{:,.2f}"}), height=400)
+                st.dataframe(df.style.format({"Total": "{:,.0f}"}), height=400)
             
             # Página DPP 2025 para Misiones VPO
             elif page == "DPP 2025":
@@ -179,7 +179,7 @@ def handle_page(main_page):
                 
                 # Monto Total Deseado
                 desired_total = 434707.0
-                st.subheader(f"Monto Total Deseado: {desired_total:,.2f} USD")
+                st.subheader(f"Monto Total Deseado: {desired_total:,.0f} USD")
                 
                 st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
                 
@@ -187,15 +187,17 @@ def handle_page(main_page):
                 gb = GridOptionsBuilder.from_dataframe(df)
                 gb.configure_default_column(editable=True, groupable=True)
                 
-                # Configurar la columna 'Total' para cálculo dinámico
+                # Configurar la columna 'Total' para cálculo dinámico sin decimales
                 gb.configure_column('Total', editable=False, valueGetter=JsCode("""
                     function(params) {
-                        return Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Costo de Pasaje']) +
-                               Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Días']) * Number(params.data['Alojamiento']) +
-                               Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Días']) * Number(params.data['Per-diem y Otros']) +
-                               Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Movilidad']);
+                        return Math.round(
+                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Costo de Pasaje']) +
+                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Días']) * Number(params.data['Alojamiento']) +
+                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Días']) * Number(params.data['Per-diem y Otros']) +
+                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Movilidad'])
+                        );
                     }
-                """), type=["numericColumn"], valueFormatter="x.toLocaleString()")
+                """), type=["numericColumn"], valueFormatter="Math.round(x).toLocaleString()")
                 
                 # Personalizar apariencia de la tabla
                 gb.configure_grid_options(domLayout='normal')
@@ -235,16 +237,16 @@ def handle_page(main_page):
                     st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de Objetivo.")
                 
                 # Recalcular 'Total' si es necesario
-                edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
+                edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1).round(0)
                 
-                # Calcular métricas
+                # Calcular métricas sin decimales
                 total_sum = edited_df['Total'].sum()
                 difference = desired_total - total_sum
                 
-                # Mostrar métricas
+                # Mostrar métricas sin decimales
                 col1, col2 = st.columns(2)
-                col1.metric("Monto Actual (USD)", f"{total_sum:,.2f}")
-                col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.2f}")
+                col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
+                col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
                 
                 # Resumen por País y Objetivo
                 summary_country = edited_df.groupby('País')['Total'].sum().reset_index()
@@ -349,9 +351,9 @@ def handle_page(main_page):
             if page == "Resumen Original":
                 st.header("VPO - Consultorías: Resumen Original")
                 
-                # Mostrar tabla completa
+                # Mostrar tabla completa sin decimales
                 st.subheader("Tabla Completa - Consultorías VPO")
-                st.dataframe(df.style.format({"Total": "{:,.2f}"}), height=400)
+                st.dataframe(df.style.format({"Total": "{:,.0f}"}), height=400)
             
             # Página DPP 2025 para Consultorías VPO
             elif page == "DPP 2025":
@@ -359,7 +361,7 @@ def handle_page(main_page):
                 
                 # Monto Total Deseado
                 desired_total = 150000.0
-                st.subheader(f"Monto Total Deseado: {desired_total:,.2f} USD")
+                st.subheader(f"Monto Total Deseado: {desired_total:,.0f} USD")
                 
                 st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
                 
@@ -367,12 +369,12 @@ def handle_page(main_page):
                 gb = GridOptionsBuilder.from_dataframe(df)
                 gb.configure_default_column(editable=True, groupable=True)
                 
-                # Configurar la columna 'Total' para cálculo dinámico
+                # Configurar la columna 'Total' para cálculo dinámico sin decimales
                 gb.configure_column('Total', editable=False, valueGetter=JsCode("""
                     function(params) {
-                        return Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses']);
+                        return Math.round(Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses']));
                     }
-                """), type=["numericColumn"], valueFormatter="x.toLocaleString()")
+                """), type=["numericColumn"], valueFormatter="Math.round(x).toLocaleString()")
                 
                 # Personalizar apariencia de la tabla
                 gb.configure_grid_options(domLayout='normal')
@@ -407,16 +409,16 @@ def handle_page(main_page):
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
                 
                 # Recalcular 'Total'
-                edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
+                edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1).round(0)
                 
-                # Calcular métricas
+                # Calcular métricas sin decimales
                 total_sum = edited_df['Total'].sum()
                 difference = desired_total - total_sum
                 
-                # Mostrar métricas
+                # Mostrar métricas sin decimales
                 col1, col2 = st.columns(2)
-                col1.metric("Monto Actual (USD)", f"{total_sum:,.2f}")
-                col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.2f}")
+                col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
+                col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
                 
                 # Descargar tabla modificada
                 st.subheader("Descargar Tabla Modificada - Consultorías VPO")
@@ -468,9 +470,9 @@ def handle_page(main_page):
             if page == "Resumen Original":
                 st.header("VPD - Misiones: Resumen Original")
     
-                # Mostrar tabla completa
+                # Mostrar tabla completa sin decimales
                 st.subheader("Tabla Completa - Misiones VPD")
-                st.dataframe(df.style.format({"Total": "{:,.2f}"}), height=400)
+                st.dataframe(df.style.format({"Total": "{:,.0f}"}), height=400)
     
             # Página DPP 2025 para Misiones VPD
             elif page == "DPP 2025":
@@ -478,7 +480,7 @@ def handle_page(main_page):
     
                 # Monto Total Deseado
                 desired_total = 168000.0
-                st.subheader(f"Monto Total Deseado: {desired_total:,.2f} USD")
+                st.subheader(f"Monto Total Deseado: {desired_total:,.0f} USD")
     
                 st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
     
@@ -486,15 +488,17 @@ def handle_page(main_page):
                 gb = GridOptionsBuilder.from_dataframe(df)
                 gb.configure_default_column(editable=True, groupable=True)
     
-                # Configurar la columna 'Total' para cálculo dinámico
+                # Configurar la columna 'Total' para cálculo dinámico sin decimales
                 gb.configure_column('Total', editable=False, valueGetter=JsCode("""
                     function(params) {
-                        return Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Costo de Pasaje']) +
-                               Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Días']) * Number(params.data['Alojamiento']) +
-                               Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Días']) * Number(params.data['Per-diem y Otros']) +
-                               Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Movilidad']);
+                        return Math.round(
+                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Costo de Pasaje']) +
+                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Días']) * Number(params.data['Alojamiento']) +
+                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Días']) * Number(params.data['Per-diem y Otros']) +
+                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Movilidad'])
+                        );
                     }
-                """), type=["numericColumn"], valueFormatter="x.toLocaleString()")
+                """), type=["numericColumn"], valueFormatter="Math.round(x).toLocaleString()")
     
                 # Personalizar apariencia de la tabla
                 gb.configure_grid_options(domLayout='normal')
@@ -530,16 +534,16 @@ def handle_page(main_page):
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
     
                 # Recalcular 'Total'
-                edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
+                edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1).round(0)
     
-                # Calcular métricas
+                # Calcular métricas sin decimales
                 total_sum = edited_df['Total'].sum()
                 difference = desired_total - total_sum
     
-                # Mostrar métricas
+                # Mostrar métricas sin decimales
                 col1, col2 = st.columns(2)
-                col1.metric("Monto Actual (USD)", f"{total_sum:,.2f}")
-                col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.2f}")
+                col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
+                col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
     
                 # Descargar tabla modificada
                 st.subheader("Descargar Tabla Modificada - Misiones VPD")
@@ -620,9 +624,9 @@ def handle_page(main_page):
                 )
                 col1.plotly_chart(fig1, use_container_width=True)
                 
-                # Mostrar tabla completa
+                # Mostrar tabla completa sin decimales
                 st.subheader("Tabla Completa - Consultorías VPD")
-                st.dataframe(df.style.format({"Total": "{:,.2f}"}), height=400)
+                st.dataframe(df.style.format({"Total": "{:,.0f}"}), height=400)
     
             # Página DPP 2025 para Consultorías VPD
             elif page == "DPP 2025":
@@ -630,7 +634,7 @@ def handle_page(main_page):
     
                 # Monto Total Deseado
                 desired_total = 130000.0
-                st.subheader(f"Monto Total Deseado: {desired_total:,.2f} USD")
+                st.subheader(f"Monto Total Deseado: {desired_total:,.0f} USD")
     
                 st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
     
@@ -638,12 +642,12 @@ def handle_page(main_page):
                 gb = GridOptionsBuilder.from_dataframe(df)
                 gb.configure_default_column(editable=True, groupable=True)
     
-                # Configurar la columna 'Total' para cálculo dinámico
+                # Configurar la columna 'Total' para cálculo dinámico sin decimales
                 gb.configure_column('Total', editable=False, valueGetter=JsCode("""
                     function(params) {
-                        return Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses']);
+                        return Math.round(Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses']));
                     }
-                """), type=["numericColumn"], valueFormatter="x.toLocaleString()")
+                """), type=["numericColumn"], valueFormatter="Math.round(x).toLocaleString()")
     
                 # Personalizar apariencia de la tabla
                 gb.configure_grid_options(domLayout='normal')
@@ -678,20 +682,20 @@ def handle_page(main_page):
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
     
                 # Recalcular 'Total'
-                edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
+                edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1).round(0)
     
-                # Calcular métricas
+                # Calcular métricas sin decimales
                 total_sum = edited_df['Total'].sum()
                 difference = desired_total - total_sum
     
-                # Mostrar métricas
+                # Mostrar métricas sin decimales
                 col1, col2 = st.columns(2)
-                col1.metric("Monto Actual (USD)", f"{total_sum:,.2f}")
-                col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.2f}")
+                col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
+                col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
     
-                # Mostrar tabla completa
+                # Mostrar tabla completa sin decimales
                 st.subheader("Tabla Completa - Consultorías VPD")
-                st.dataframe(edited_df.style.format({"Total": "{:,.2f}"}), height=400)
+                st.dataframe(edited_df.style.format({"Total": "{:,.0f}"}), height=400)
     
                 # Descargar tabla modificada
                 st.subheader("Descargar Tabla Modificada - Consultorías VPD")

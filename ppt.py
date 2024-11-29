@@ -50,8 +50,7 @@ for col in all_numeric_columns:
 # Verificar que la columna 'Objetivo' contiene solo 'R' y 'E' o NaN
 valid_objetivos = ['R', 'E']
 if not df['Objetivo'].dropna().isin(valid_objetivos).all():
-    st.error("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Asegúrate de que solo contenga estos valores o NaN.")
-    st.stop()
+    st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en el gráfico de Objetivo.")
 
 # Calcular la columna 'Total' inicialmente
 df['Total'] = df.apply(calculate_total, axis=1)
@@ -60,9 +59,18 @@ df['Total'] = df.apply(calculate_total, axis=1)
 desired_total = 434707.0
 
 # Definir la paleta de colores para Objetivo
-color_mapping = {
-    'R': '#161a1d',
-    'E': '#ba181b'
+objetivo_color_mapping = {
+    'E': '#a4161a',
+    'R': '#d3d3d3'
+}
+
+# Definir la paleta de colores para Países
+pais_color_mapping = {
+    'Argentina': '#457b9d',
+    'Bolivia': '#3a5a40',
+    'Brasil': '#ffb703',
+    'Paraguay': '#d62828',
+    'Uruguay': '#1d3557'
 }
 
 # Configuración de la página
@@ -101,7 +109,7 @@ if vista == "Resumen Original":
     # Resumen por país
     summary_by_country = df.groupby('País')['Total'].sum().reset_index()
 
-    # Resumen por Objetivo R y E (excluyendo NaN)
+    # Resumen por Objetivo R y E (excluyendo NaN y otros valores)
     summary_by_obj = df[df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
 
     # Crear los dos gráficos de dona
@@ -115,11 +123,18 @@ if vista == "Resumen Original":
         hole=0.4,
         title="Montos Totales por País",
         color='País',
-        color_discrete_sequence=px.colors.qualitative.Pastel
+        color_discrete_map=pais_color_mapping
     )
     fig1.update_layout(
-        showlegend=False,
-        margin=dict(t=40, b=20, l=20, r=20),
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        margin=dict(t=60, b=20, l=20, r=20),
         height=300  # Tamaño reducido
     )
     col1.plotly_chart(fig1, use_container_width=True)
@@ -132,16 +147,23 @@ if vista == "Resumen Original":
         hole=0.4,
         title="Distribución por Objetivo R y E",
         color='Objetivo',
-        color_discrete_map=color_mapping
+        color_discrete_map=objetivo_color_mapping
     )
     fig2.update_layout(
-        showlegend=False,
-        margin=dict(t=40, b=20, l=20, r=20),
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        margin=dict(t=60, b=20, l=20, r=20),
         height=300  # Tamaño reducido
     )
     col2.plotly_chart(fig2, use_container_width=True)
     
-    # Visualizar tabla completa con formato, sólo formatear 'Total'
+    # Visualizar tabla completa con formato, solo formatear 'Total'
     st.subheader("Tabla Completa")
     st.dataframe(
         df.style.format({"Total": "{:,.2f}"}),
@@ -232,7 +254,7 @@ elif vista == "Edición y Ajuste":
     # Resumen por país y categorías (actualizado)
     summary_by_country_edited = edited_df.groupby('País')['Total'].sum().reset_index()
 
-    # Resumen por Objetivo R y E (actualizado, excluyendo NaN)
+    # Resumen por Objetivo R y E (actualizado, excluyendo NaN y otros valores)
     summary_by_obj_edited = edited_df[edited_df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
 
     # Crear los dos gráficos de dona actualizados
@@ -246,11 +268,18 @@ elif vista == "Edición y Ajuste":
         hole=0.4,
         title="Montos Totales por País (Actualizado)",
         color='País',
-        color_discrete_sequence=px.colors.qualitative.Pastel
+        color_discrete_map=pais_color_mapping
     )
     fig3.update_layout(
-        showlegend=False,
-        margin=dict(t=40, b=20, l=20, r=20),
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        margin=dict(t=60, b=20, l=20, r=20),
         height=300  # Tamaño reducido
     )
     col3.plotly_chart(fig3, use_container_width=True)
@@ -263,14 +292,28 @@ elif vista == "Edición y Ajuste":
         hole=0.4,
         title="Distribución por Objetivo R y E (Actualizado)",
         color='Objetivo',
-        color_discrete_map=color_mapping
+        color_discrete_map=objetivo_color_mapping
     )
     fig4.update_layout(
-        showlegend=False,
-        margin=dict(t=40, b=20, l=20, r=20),
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        margin=dict(t=60, b=20, l=20, r=20),
         height=300  # Tamaño reducido
     )
     col4.plotly_chart(fig4, use_container_width=True)
+
+    # Visualizar tabla completa con formato, solo formatear 'Total'
+    st.subheader("Tabla Completa (Actualizada)")
+    st.dataframe(
+        edited_df.style.format({"Total": "{:,.2f}"}),
+        height=400
+    )
 
     # Descargar la tabla modificada
     st.subheader("Descargar Tabla Modificada")

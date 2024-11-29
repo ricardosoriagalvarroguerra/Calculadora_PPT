@@ -144,6 +144,31 @@ def create_consolidado(deseados):
     st.subheader("Consolidado - Consultorías")
     st.dataframe(styled_consultorias_df)
 
+# Función auxiliar para crear gráficos de dona con anillo más delgado y tamaño más pequeño
+def crear_dona(df, nombres, valores, titulo, color_map, hole=0.5, height=300, margin_l=50):
+    fig = px.pie(
+        df,
+        names=nombres,
+        values=valores,
+        hole=hole,
+        title=titulo,
+        color=nombres,
+        color_discrete_map=color_map
+    )
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=1,
+            xanchor="left",
+            x=-0.1
+        ),
+        margin=dict(t=60, b=20, l=margin_l, r=20),
+        height=height
+    )
+    return fig
+
 # Función para manejar cada página principal
 def handle_page(main_page):
     # Definir los montos deseados para cada sección
@@ -260,50 +285,28 @@ def handle_page(main_page):
                 col1, col2 = st.columns(2)
                 
                 # Gráfico de Dona: Montos Totales por País
-                fig1 = px.pie(
-                    summary_country,
-                    names='País',
-                    values='Total',
-                    hole=0.4,  # Puedes reducir este valor para un anillo más grueso
-                    title="Montos Totales por País",
-                    color='País',
-                    color_discrete_map=pais_color_map
-                )
-                fig1.update_layout(
-                    showlegend=True,
-                    legend=dict(
-                        orientation="v",
-                        yanchor="top",
-                        y=1,
-                        xanchor="left",
-                        x=-0.1
-                    ),
-                    margin=dict(t=60, b=20, l=50, r=20),  # Reducir margen izquierdo
-                    height=400  # Aumentar altura
+                fig1 = crear_dona(
+                    df=summary_country,
+                    nombres='País',
+                    valores='Total',
+                    titulo="Montos Totales por País",
+                    color_map=pais_color_map,
+                    hole=0.5,        # Aumento del hole para anillo más delgado
+                    height=300,      # Reducción de tamaño del gráfico
+                    margin_l=50      # Ajuste de márgenes
                 )
                 col1.plotly_chart(fig1, use_container_width=True)
                 
                 # Gráfico de Dona: Distribución por Objetivo R y E
-                fig2 = px.pie(
-                    summary_obj,
-                    names='Objetivo',
-                    values='Total',
-                    hole=0.4,  # Puedes reducir este valor para un anillo más grueso
-                    title="Distribución por Objetivo R y E",
-                    color='Objetivo',
-                    color_discrete_map=objetivo_color_map
-                )
-                fig2.update_layout(
-                    showlegend=True,
-                    legend=dict(
-                        orientation="v",
-                        yanchor="top",
-                        y=1,
-                        xanchor="left",
-                        x=-0.1
-                    ),
-                    margin=dict(t=60, b=20, l=50, r=20),  # Reducir margen izquierdo
-                    height=400  # Aumentar altura
+                fig2 = crear_dona(
+                    df=summary_obj,
+                    nombres='Objetivo',
+                    valores='Total',
+                    titulo="Distribución por Objetivo R y E",
+                    color_map=objetivo_color_map,
+                    hole=0.5,        # Aumento del hole para anillo más delgado
+                    height=300,      # Reducción de tamaño del gráfico
+                    margin_l=50      # Ajuste de márgenes
                 )
                 col2.plotly_chart(fig2, use_container_width=True)
                 
@@ -420,51 +423,29 @@ def handle_page(main_page):
                 col3, col4 = st.columns(2)
                 
                 # Gráfico de Dona: Montos Totales por País (Actualizado)
-                fig3 = px.pie(
-                    summary_country,
-                    names='País',
-                    values='Total',
-                    hole=0.4,  # Puedes reducir este valor para un anillo más grueso
-                    title="Montos Totales por País (Actualizado)",
-                    color='País',
-                    color_discrete_map=pais_color_map
-                )
-                fig3.update_layout(
-                    showlegend=True,
-                    legend=dict(
-                        orientation="v",
-                        yanchor="top",
-                        y=1,
-                        xanchor="left",
-                        x=-0.1
-                    ),
-                    margin=dict(t=60, b=20, l=50, r=20),  # Reducir margen izquierdo
-                    height=400  # Aumentar altura
+                fig3 = crear_dona(
+                    df=summary_country,
+                    nombres='País',
+                    valores='Total',
+                    titulo="Montos Totales por País (Actualizado)",
+                    color_map=pais_color_map,
+                    hole=0.5,        # Aumento del hole para anillo más delgado
+                    height=300,      # Reducción de tamaño del gráfico
+                    margin_l=50      # Ajuste de márgenes
                 )
                 col3.plotly_chart(fig3, use_container_width=True)
                 
                 # Gráfico de Dona: Distribución por Objetivo R y E (Actualizado)
                 if not summary_obj.empty:
-                    fig4 = px.pie(
-                        summary_obj,
-                        names='Objetivo',
-                        values='Total',
-                        hole=0.4,  # Puedes reducir este valor para un anillo más grueso
-                        title="Distribución por Objetivo R y E (Actualizado)",
-                        color='Objetivo',
-                        color_discrete_map=objetivo_color_map
-                    )
-                    fig4.update_layout(
-                        showlegend=True,
-                        legend=dict(
-                            orientation="v",
-                            yanchor="top",
-                            y=1,
-                            xanchor="left",
-                            x=-0.1
-                        ),
-                        margin=dict(t=60, b=20, l=50, r=20),  # Reducir margen izquierdo
-                        height=400  # Aumentar altura
+                    fig4 = crear_dona(
+                        df=summary_obj,
+                        nombres='Objetivo',
+                        valores='Total',
+                        titulo="Distribución por Objetivo R y E (Actualizado)",
+                        color_map=objetivo_color_map,
+                        hole=0.5,        # Aumento del hole para anillo más delgado
+                        height=300,      # Reducción de tamaño del gráfico
+                        margin_l=50      # Ajuste de márgenes
                     )
                     col4.plotly_chart(fig4, use_container_width=True)
                 
@@ -809,6 +790,43 @@ def handle_page(main_page):
                 col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
                 col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
     
+                # Resumen por País y Objetivo
+                summary_country = edited_df.groupby('País')['Total'].sum().reset_index()
+                if 'Objetivo' in edited_df.columns:
+                    summary_obj = edited_df[edited_df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
+                else:
+                    summary_obj = pd.DataFrame(columns=['Objetivo', 'Total'])
+    
+                # Crear gráficos de dona actualizados
+                col3, col4 = st.columns(2)
+    
+                # Gráfico de Dona: Montos Totales por País (Actualizado)
+                fig3 = crear_dona(
+                    df=summary_country,
+                    nombres='País',
+                    valores='Total',
+                    titulo="Montos Totales por País (Actualizado)",
+                    color_map=pais_color_map,
+                    hole=0.5,        # Aumento del hole para anillo más delgado
+                    height=300,      # Reducción de tamaño del gráfico
+                    margin_l=50      # Ajuste de márgenes
+                )
+                col3.plotly_chart(fig3, use_container_width=True)
+    
+                # Gráfico de Dona: Distribución por Objetivo R y E (Actualizado)
+                if not summary_obj.empty:
+                    fig4 = crear_dona(
+                        df=summary_obj,
+                        nombres='Objetivo',
+                        valores='Total',
+                        titulo="Distribución por Objetivo R y E (Actualizado)",
+                        color_map=objetivo_color_map,
+                        hole=0.5,        # Aumento del hole para anillo más delgado
+                        height=300,      # Reducción de tamaño del gráfico
+                        margin_l=50      # Ajuste de márgenes
+                    )
+                    col4.plotly_chart(fig4, use_container_width=True)
+    
                 # Guardar datos editados en cache
                 save_to_cache(edited_df, 'VPD', 'Misiones')
     
@@ -896,26 +914,15 @@ def handle_page(main_page):
                 col1, _ = st.columns(2)
                 
                 # Gráfico de Dona: Distribución por VPD/AREA
-                fig1 = px.pie(
-                    summary_vpd_area,
-                    names='VPD/AREA',
-                    values='Total',
-                    hole=0.4,  # Puedes reducir este valor para un anillo más grueso
-                    title="Distribución por VPD/AREA",
-                    color='VPD/AREA',
-                    color_discrete_map=vpd_area_color_map
-                )
-                fig1.update_layout(
-                    showlegend=True,
-                    legend=dict(
-                        orientation="v",
-                        yanchor="top",
-                        y=1,
-                        xanchor="left",
-                        x=-0.1
-                    ),
-                    margin=dict(t=60, b=20, l=50, r=20),  # Reducir margen izquierdo
-                    height=400  # Aumentar altura
+                fig1 = crear_dona(
+                    df=summary_vpd_area,
+                    nombres='VPD/AREA',
+                    valores='Total',
+                    titulo="Distribución por VPD/AREA",
+                    color_map=vpd_area_color_map,
+                    hole=0.5,        # Aumento del hole para anillo más delgado
+                    height=300,      # Reducción de tamaño del gráfico
+                    margin_l=50      # Ajuste de márgenes
                 )
                 col1.plotly_chart(fig1, use_container_width=True)
                 

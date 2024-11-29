@@ -68,43 +68,70 @@ def handle_page(main_page):
             page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPO_Misiones_page")
             file_path = 'BDD_Ajuste.xlsx'
             sheet_name = 'Original_VPO'
-            
-            # Cargar datos
-            try:
-                df = pd.read_excel(file_path, sheet_name=sheet_name)
-            except FileNotFoundError:
-                st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                st.stop()
-            except Exception as e:
-                st.error(f"Error al leer el archivo Excel: {e}")
-                st.stop()
-            
-            # Verificar columnas
-            required_columns = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
-                                'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Objetivo']
-            for col in required_columns:
-                if col not in df.columns:
-                    st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
-                    st.stop()
-            
-            # Limpiar y convertir columnas numéricas
-            numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
-                               'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
-            for col in numeric_columns:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+            cache_file = 'cache/VPO_Misiones_DPP2025.csv'
+            cache_dir = 'cache'
+
+            # Función para procesar el DataFrame de VPO Misiones
+            def process_vpo_misiones_df(df, sheet_name):
+                # Verificar columnas
+                required_columns = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                                    'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Objetivo']
+                for col in required_columns:
+                    if col not in df.columns:
+                        st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                        st.stop()
+                
+                # Limpiar y convertir columnas numéricas
+                numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                                   'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
+                for col in numeric_columns:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+                    else:
+                        st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                        st.stop()
+                
+                # Verificar valores en 'Objetivo'
+                valid_objetivos = ['R', 'E']
+                if 'Objetivo' in df.columns and not df['Objetivo'].dropna().isin(valid_objetivos).all():
+                    st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de Objetivo.")
+                
+                # Calcular 'Total' si es necesario
+                if 'Total' not in df.columns or df['Total'].sum() == 0:
+                    df['Total'] = df.apply(calculate_total_misiones, axis=1)
+                
+                return df
+
+            if page == "DPP 2025":
+                # Cargar datos desde cache si existe
+                if os.path.exists(cache_file):
+                    df = pd.read_csv(cache_file)
                 else:
-                    st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                    # Cargar datos desde Excel
+                    try:
+                        df = pd.read_excel(file_path, sheet_name=sheet_name)
+                    except FileNotFoundError:
+                        st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
+                        st.stop()
+                    except Exception as e:
+                        st.error(f"Error al leer el archivo Excel: {e}")
+                        st.stop()
+                    
+                    # Procesar datos
+                    df = process_vpo_misiones_df(df, sheet_name)
+            else:
+                # Cargar datos desde Excel
+                try:
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+                except FileNotFoundError:
+                    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
                     st.stop()
-            
-            # Verificar valores en 'Objetivo'
-            valid_objetivos = ['R', 'E']
-            if 'Objetivo' in df.columns and not df['Objetivo'].dropna().isin(valid_objetivos).all():
-                st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de Objetivo.")
-            
-            # Calcular 'Total' si es necesario
-            if 'Total' not in df.columns or df['Total'].sum() == 0:
-                df['Total'] = df.apply(calculate_total_misiones, axis=1)
+                except Exception as e:
+                    st.error(f"Error al leer el archivo Excel: {e}")
+                    st.stop()
+                
+                # Procesar datos
+                df = process_vpo_misiones_df(df, sheet_name)
             
             # Definir paleta de colores para Objetivo
             objetivo_color_map = {
@@ -263,6 +290,8 @@ def handle_page(main_page):
                         st.stop()
                 
                 # Limpiar y convertir columnas numéricas
+                numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                                   'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
                 for col in numeric_columns:
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
                 
@@ -354,36 +383,63 @@ def handle_page(main_page):
             page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPO_Consultorias_page")
             file_path = 'BDD_Ajuste.xlsx'
             sheet_name = 'Consultores_VPO'
-            
-            # Cargar datos
-            try:
-                df = pd.read_excel(file_path, sheet_name=sheet_name)
-            except FileNotFoundError:
-                st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                st.stop()
-            except Exception as e:
-                st.error(f"Error al leer el archivo Excel: {e}")
-                st.stop()
-            
-            # Verificar columnas
-            required_columns = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
-            for col in required_columns:
-                if col not in df.columns:
-                    st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
-                    st.stop()
-            
-            # Limpiar y convertir columnas numéricas
-            numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-            for col in numeric_columns:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+            cache_file = 'cache/VPO_Consultorías_DPP2025.csv'
+            cache_dir = 'cache'
+
+            # Función para procesar el DataFrame de VPO Consultorías
+            def process_vpo_consultorias_df(df, sheet_name):
+                # Verificar columnas
+                required_columns = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
+                for col in required_columns:
+                    if col not in df.columns:
+                        st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                        st.stop()
+                
+                # Limpiar y convertir columnas numéricas
+                numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
+                for col in numeric_columns:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+                    else:
+                        st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                        st.stop()
+                
+                # Calcular 'Total' si es necesario
+                if 'Total' not in df.columns or df['Total'].sum() == 0:
+                    df['Total'] = df.apply(calculate_total_consultorias, axis=1)
+                
+                return df
+
+            if page == "DPP 2025":
+                # Cargar datos desde cache si existe
+                if os.path.exists(cache_file):
+                    df = pd.read_csv(cache_file)
                 else:
-                    st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                    # Cargar datos desde Excel
+                    try:
+                        df = pd.read_excel(file_path, sheet_name=sheet_name)
+                    except FileNotFoundError:
+                        st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
+                        st.stop()
+                    except Exception as e:
+                        st.error(f"Error al leer el archivo Excel: {e}")
+                        st.stop()
+                    
+                    # Procesar datos
+                    df = process_vpo_consultorias_df(df, sheet_name)
+            else:
+                # Cargar datos desde Excel
+                try:
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+                except FileNotFoundError:
+                    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
                     st.stop()
-            
-            # Calcular 'Total' si es necesario
-            if 'Total' not in df.columns or df['Total'].sum() == 0:
-                df['Total'] = df.apply(calculate_total_consultorias, axis=1)
+                except Exception as e:
+                    st.error(f"Error al leer el archivo Excel: {e}")
+                    st.stop()
+                
+                # Procesar datos
+                df = process_vpo_consultorias_df(df, sheet_name)
             
             # Página Requerimiento del área para Consultorías VPO
             if page == "Requerimiento del área":
@@ -460,6 +516,7 @@ def handle_page(main_page):
                         st.stop()
                 
                 # Limpiar y convertir columnas numéricas
+                numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
                 for col in numeric_columns:
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
                 
@@ -492,39 +549,66 @@ def handle_page(main_page):
             page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPD_Misiones_page")
             file_path = 'BDD_Ajuste.xlsx'
             sheet_name = 'Misiones_VPD'
-    
-            # Cargar datos
-            try:
-                df = pd.read_excel(file_path, sheet_name=sheet_name)
-            except FileNotFoundError:
-                st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                st.stop()
-            except Exception as e:
-                st.error(f"Error al leer el archivo Excel: {e}")
-                st.stop()
-    
-            # Verificar columnas
-            required_columns = ['País', 'Operación', 'VPD/AREA', 'Cantidad de Funcionarios', 'Días', 
-                                'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
-            for col in required_columns:
-                if col not in df.columns:
-                    st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
-                    st.stop()
-    
-            # Limpiar y convertir columnas numéricas
-            numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
-                               'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
-            for col in numeric_columns:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+            cache_file = 'cache/VPD_Misiones_DPP2025.csv'
+            cache_dir = 'cache'
+
+            # Función para procesar el DataFrame de VPD Misiones
+            def process_vpd_misiones_df(df, sheet_name):
+                # Verificar columnas
+                required_columns = ['País', 'Operación', 'VPD/AREA', 'Cantidad de Funcionarios', 'Días', 
+                                    'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
+                for col in required_columns:
+                    if col not in df.columns:
+                        st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                        st.stop()
+                
+                # Limpiar y convertir columnas numéricas
+                numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                                   'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
+                for col in numeric_columns:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+                    else:
+                        st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                        st.stop()
+                
+                # Calcular 'Total' si es necesario
+                if 'Total' not in df.columns or df['Total'].sum() == 0:
+                    df['Total'] = df.apply(calculate_total_misiones, axis=1)
+                
+                return df
+
+            if page == "DPP 2025":
+                # Cargar datos desde cache si existe
+                if os.path.exists(cache_file):
+                    df = pd.read_csv(cache_file)
                 else:
-                    st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                    # Cargar datos desde Excel
+                    try:
+                        df = pd.read_excel(file_path, sheet_name=sheet_name)
+                    except FileNotFoundError:
+                        st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
+                        st.stop()
+                    except Exception as e:
+                        st.error(f"Error al leer el archivo Excel: {e}")
+                        st.stop()
+                    
+                    # Procesar datos
+                    df = process_vpd_misiones_df(df, sheet_name)
+            else:
+                # Cargar datos desde Excel
+                try:
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+                except FileNotFoundError:
+                    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
                     st.stop()
-    
-            # Calcular 'Total' si es necesario
-            if 'Total' not in df.columns or df['Total'].sum() == 0:
-                df['Total'] = df.apply(calculate_total_misiones, axis=1)
-    
+                except Exception as e:
+                    st.error(f"Error al leer el archivo Excel: {e}")
+                    st.stop()
+                
+                # Procesar datos
+                df = process_vpd_misiones_df(df, sheet_name)
+            
             # Página Requerimiento del área para Misiones VPD
             if page == "Requerimiento del área":
                 st.header("VPD - Misiones: Requerimiento del área")
@@ -610,6 +694,8 @@ def handle_page(main_page):
                         st.stop()
     
                 # Limpiar y convertir columnas numéricas
+                numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                                   'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
                 for col in numeric_columns:
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
     
@@ -638,37 +724,64 @@ def handle_page(main_page):
             page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPD_Consultorias_page")
             file_path = 'BDD_Ajuste.xlsx'
             sheet_name = 'Consultores_VPD'
-    
-            # Cargar datos
-            try:
-                df = pd.read_excel(file_path, sheet_name=sheet_name)
-            except FileNotFoundError:
-                st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                st.stop()
-            except Exception as e:
-                st.error(f"Error al leer el archivo Excel: {e}")
-                st.stop()
-    
-            # Verificar columnas
-            required_columns = ['Cargo', 'VPD/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
-            for col in required_columns:
-                if col not in df.columns:
-                    st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
-                    st.stop()
-    
-            # Limpiar y convertir columnas numéricas
-            numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-            for col in numeric_columns:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+            cache_file = 'cache/VPD_Consultorías_DPP2025.csv'
+            cache_dir = 'cache'
+
+            # Función para procesar el DataFrame de VPD Consultorías
+            def process_vpd_consultorias_df(df, sheet_name):
+                # Verificar columnas
+                required_columns = ['Cargo', 'VPD/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
+                for col in required_columns:
+                    if col not in df.columns:
+                        st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                        st.stop()
+                
+                # Limpiar y convertir columnas numéricas
+                numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
+                for col in numeric_columns:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+                    else:
+                        st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                        st.stop()
+                
+                # Calcular 'Total' si es necesario
+                if 'Total' not in df.columns or df['Total'].sum() == 0:
+                    df['Total'] = df.apply(calculate_total_consultorias, axis=1)
+                
+                return df
+
+            if page == "DPP 2025":
+                # Cargar datos desde cache si existe
+                if os.path.exists(cache_file):
+                    df = pd.read_csv(cache_file)
                 else:
-                    st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                    # Cargar datos desde Excel
+                    try:
+                        df = pd.read_excel(file_path, sheet_name=sheet_name)
+                    except FileNotFoundError:
+                        st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
+                        st.stop()
+                    except Exception as e:
+                        st.error(f"Error al leer el archivo Excel: {e}")
+                        st.stop()
+                    
+                    # Procesar datos
+                    df = process_vpd_consultorias_df(df, sheet_name)
+            else:
+                # Cargar datos desde Excel
+                try:
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+                except FileNotFoundError:
+                    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
                     st.stop()
-    
-            # Calcular 'Total' si es necesario
-            if 'Total' not in df.columns or df['Total'].sum() == 0:
-                df['Total'] = df.apply(calculate_total_consultorias, axis=1)
-    
+                except Exception as e:
+                    st.error(f"Error al leer el archivo Excel: {e}")
+                    st.stop()
+                
+                # Procesar datos
+                df = process_vpd_consultorias_df(df, sheet_name)
+            
             # Definir paleta de colores para VPD/AREA
             vpd_area_unique = df['VPD/AREA'].unique()
             # Asignar colores únicos a cada VPD/AREA
@@ -779,6 +892,7 @@ def handle_page(main_page):
                         st.stop()
     
                 # Limpiar y convertir columnas numéricas
+                numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
                 for col in numeric_columns:
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
     
@@ -794,6 +908,9 @@ def handle_page(main_page):
                 col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
                 col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
     
+                # Guardar datos editados en cache
+                save_to_cache(edited_df, 'VPD', 'Consultorías')
+    
                 # Mostrar tabla completa sin decimales
                 st.subheader("Tabla Completa - Consultorías VPD")
                 st.dataframe(
@@ -805,9 +922,6 @@ def handle_page(main_page):
                     }),
                     height=400
                 )
-    
-                # Guardar datos editados en cache
-                save_to_cache(edited_df, 'VPD', 'Consultorías')
     
                 # Descargar tabla modificada sin decimales
                 st.subheader("Descargar Tabla Modificada - Consultorías VPD")

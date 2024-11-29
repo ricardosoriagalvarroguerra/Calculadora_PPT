@@ -99,7 +99,7 @@ st.markdown("""
 st.sidebar.title("Selector de Vista")
 vista = st.sidebar.radio(
     "Elige una vista:",
-    ("Resumen Original", "Edición y Ajuste")
+    ("Resumen Original", "DPP 2025")
 )
 
 # Vista Resumen Original
@@ -130,9 +130,9 @@ if vista == "Resumen Original":
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
+            y=1.15,
+            xanchor="center",
+            x=0.5
         ),
         margin=dict(t=60, b=20, l=20, r=20),
         height=300  # Tamaño reducido
@@ -154,9 +154,9 @@ if vista == "Resumen Original":
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
+            y=1.15,
+            xanchor="center",
+            x=0.5
         ),
         margin=dict(t=60, b=20, l=20, r=20),
         height=300  # Tamaño reducido
@@ -170,9 +170,9 @@ if vista == "Resumen Original":
         height=400
     )
 
-# Vista Edición y Ajuste
-elif vista == "Edición y Ajuste":
-    st.title("Ajuste de Presupuesto")
+# Vista DPP 2025 (Anteriormente "Edición y Ajuste")
+elif vista == "DPP 2025":
+    st.title("DPP 2025")
 
     # Mostrar el monto total deseado (fijo)
     st.subheader(f"Monto Total Deseado: {desired_total:,.2f} USD")
@@ -275,9 +275,9 @@ elif vista == "Edición y Ajuste":
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
+            y=1.15,
+            xanchor="center",
+            x=0.5
         ),
         margin=dict(t=60, b=20, l=20, r=20),
         height=300  # Tamaño reducido
@@ -299,21 +299,14 @@ elif vista == "Edición y Ajuste":
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
+            y=1.15,
+            xanchor="center",
+            x=0.5
         ),
         margin=dict(t=60, b=20, l=20, r=20),
         height=300  # Tamaño reducido
     )
     col4.plotly_chart(fig4, use_container_width=True)
-
-    # Visualizar tabla completa con formato, solo formatear 'Total'
-    st.subheader("Tabla Completa (Actualizada)")
-    st.dataframe(
-        edited_df.style.format({"Total": "{:,.2f}"}),
-        height=400
-    )
 
     # Descargar la tabla modificada
     st.subheader("Descargar Tabla Modificada")

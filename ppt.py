@@ -24,45 +24,59 @@ for col in numeric_columns:
 # Calcular la columna 'Total' inicialmente
 df['Total'] = df.apply(calculate_total, axis=1)
 
+# Monto total deseado (fijo y no editable)
+desired_total = 434707.0
+
+# Estilo de la aplicación
+st.set_page_config(page_title="Calculadora de Presupuesto", layout="wide")
+st.markdown("""
+<style>
+    .main {
+        background-color: #f0f2f6;
+    }
+    .stButton>button {
+        color: white;
+        background-color: #4CAF50;
+    }
+    .stNumberInput>div>input {
+        background-color: #f0f2f6;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Selector de vista
 st.sidebar.title("Selector de Vista")
 vista = st.sidebar.radio(
     "Elige una vista:",
-    ("Vista Resumen Original", "Vista Editable con Actualización")
+    ("Resumen Original", "Edición y Ajuste")
 )
 
-if vista == "Vista Resumen Original":
-    st.title("Requerimiento del Área")
-
+if vista == "Resumen Original":
+    st.title("Resumen General")
+    
     # Resumen por país y categorías
     category_columns = ['Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
-    summary_by_country = df.groupby('País')[category_columns + ['Total']].sum()
+    summary_by_country = df.groupby('País')[category_columns + ['Total']].sum().reset_index()
 
-    # Mostrar resumen por país con tablas expandibles
-    st.write("**Resumen General por País:**")
-    for country, data in summary_by_country.iterrows():
-        total = data['Total']
-        with st.expander(f"{country} - Total: {total:,.2f}"):
-            st.write("**Detalles por Categoría**")
-            for category in category_columns:
-                st.write(f"- **{category}:** {data[category]:,.2f}")
+    # Mostrar resumen por país en una tabla
+    st.subheader("Resumen por País")
+    st.dataframe(summary_by_country.style.format("{:,.2f}"), height=400)
 
     # Visualizar tabla completa
-    st.write("### Tabla Completa:")
-    st.dataframe(df)
+    st.subheader("Tabla Completa")
+    st.dataframe(df.style.format("{:,.2f}"), height=400)
 
-elif vista == "Vista Editable con Actualización":
-    st.title("DPP 2025")
-
-    # Establecer el monto total deseado por defecto en 434,707
-    desired_total = st.number_input("Ingresa el monto total deseado:", value=434707.0, step=0.01)
+elif vista == "Edición y Ajuste":
+    st.title("Ajuste de Presupuesto")
+    
+    # Mostrar el monto total deseado (fijo)
+    st.subheader(f"Monto Total Deseado: {desired_total:,.2f} USD")
+    
+    st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
 
     # Configuración de AgGrid para edición
-    st.write("### Tabla Editable")
-    st.write("Edita los valores y ajusta los totales hasta alcanzar el monto deseado.")
-
     gb = GridOptionsBuilder.from_dataframe(df)
-    gb.configure_default_column(editable=True)
+    gb.configure_default_column(editable=True, groupable=True)
 
     # Configurar la columna 'Total' para que se calcule dinámicamente en el lado del cliente
     gb.configure_column('Total', editable=False, valueGetter=JsCode("""
@@ -74,53 +88,50 @@ elif vista == "Vista Editable con Actualización":
         }
     """), type=["numericColumn"], valueFormatter="x.toLocaleString()")
 
+    # Personalizar el aspecto de la tabla
+    gb.configure_grid_options(domLayout='normal')
     grid_options = gb.build()
 
     # Mostrar tabla editable
     grid_response = AgGrid(
         df,
         gridOptions=grid_options,
-        data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+        data_return_mode=DataReturnMode.FILTERED,
         update_mode='MODEL_CHANGED',
-        fit_columns_on_grid_load=True,
+        fit_columns_on_grid_load=False,
+        height=400,
+        width='100%',
         enable_enterprise_modules=False,
-        allow_unsafe_jscode=True,  # Permitir código JavaScript personalizado
+        allow_unsafe_jscode=True,
+        theme='alpine'  # Puedes probar otros temas como 'streamlit', 'balham', etc.
     )
 
     # Datos editados
     edited_df = pd.DataFrame(grid_response['data'])
 
     # Convertir columnas a numéricas
-    numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje', 'Alojamiento',
-                       'Per-diem y Otros', 'Movilidad']
     for col in numeric_columns:
         edited_df[col] = pd.to_numeric(edited_df[col], errors='coerce').fillna(0)
 
     # Recalcular la columna 'Total' con los datos editados
     edited_df['Total'] = edited_df.apply(calculate_total, axis=1)
 
-    # Resumen por país y categorías (actualizado)
-    category_columns = ['Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
-    summary_by_country_edited = edited_df.groupby('País')[category_columns + ['Total']].sum()
-
-    # Mostrar resumen por país con tablas expandibles
-    st.write("**Resumen General por País (Actualizado):**")
-    for country, data in summary_by_country_edited.iterrows():
-        total = data['Total']
-        with st.expander(f"{country} - Total: {total:,.2f}"):
-            st.write("**Detalles por Categoría**")
-            for category in category_columns:
-                st.write(f"- **{category}:** {data[category]:,.2f}")
-
-    # Mostrar el nuevo monto total general
+    # Mostrar el nuevo monto total general y la diferencia
     total_sum = edited_df['Total'].sum()
-    st.write(f"### Nuevo Monto Total General: {total_sum:,.2f}")
-
-    # Calcular y mostrar la diferencia respecto al monto deseado
     difference = desired_total - total_sum
-    st.write(f"### Diferencia para alcanzar el monto deseado: {difference:,.2f}")
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Nuevo Monto Total General (USD)", f"{total_sum:,.2f}")
+    col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.2f}")
+
+    # Resumen por país y categorías (actualizado)
+    summary_by_country_edited = edited_df.groupby('País')[category_columns + ['Total']].sum().reset_index()
+
+    # Mostrar resumen por país
+    st.subheader("Resumen por País Actualizado")
+    st.dataframe(summary_by_country_edited.style.format("{:,.2f}"), height=400)
 
     # Descargar la tabla modificada
-    st.write("### Descargar Tabla Modificada")
+    st.subheader("Descargar Tabla Modificada")
     csv = edited_df.to_csv(index=False).encode('utf-8')
     st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada.csv", mime="text/csv")

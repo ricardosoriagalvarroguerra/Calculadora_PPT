@@ -47,9 +47,10 @@ for col in all_numeric_columns:
         st.error(f"La columna '{col}' no existe en el archivo Excel.")
         st.stop()
 
-# Verificar que la columna 'Objetivo' contiene solo 'R' y 'E'
-if not df['Objetivo'].isin(['R', 'E']).all():
-    st.error("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Asegúrate de que solo contenga estos valores.")
+# Verificar que la columna 'Objetivo' contiene solo 'R' y 'E' o NaN
+valid_objetivos = ['R', 'E']
+if not df['Objetivo'].dropna().isin(valid_objetivos).all():
+    st.error("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Asegúrate de que solo contenga estos valores o NaN.")
     st.stop()
 
 # Calcular la columna 'Total' inicialmente
@@ -58,12 +59,10 @@ df['Total'] = df.apply(calculate_total, axis=1)
 # Monto total deseado (fijo y no editable)
 desired_total = 434707.0
 
-# Definir la paleta de colores
+# Definir la paleta de colores para Objetivo
 color_mapping = {
-    'Costo de Pasaje': '#161a1d',
-    'Alojamiento': '#ba181b',
-    'Per-diem y Otros': '#d3d3d3',
-    'Movilidad': '#660708'
+    'R': '#161a1d',
+    'E': '#ba181b'
 }
 
 # Configuración de la página
@@ -98,20 +97,12 @@ vista = st.sidebar.radio(
 # Vista Resumen Original
 if vista == "Resumen Original":
     st.title("Resumen General")
-    
-    # Resumen por país y categorías
-    summary_by_country = df.groupby('País')[category_columns + ['Total']].sum().reset_index()
 
-    # Convertir las columnas a numéricas en el resumen
-    for col in category_columns + ['Total']:
-        if col in summary_by_country.columns:
-            summary_by_country[col] = pd.to_numeric(summary_by_country[col], errors='coerce').fillna(0)
-        else:
-            st.error(f"La columna '{col}' no existe en el resumen por país.")
-            st.stop()
+    # Resumen por país
+    summary_by_country = df.groupby('País')['Total'].sum().reset_index()
 
-    # Resumen por Objetivo R y E
-    summary_by_obj = df.groupby('Objetivo')['Total'].sum().reset_index()
+    # Resumen por Objetivo R y E (excluyendo NaN)
+    summary_by_obj = df[df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
 
     # Crear los dos gráficos de dona
     col1, col2 = st.columns(2)
@@ -129,7 +120,7 @@ if vista == "Resumen Original":
     fig1.update_layout(
         showlegend=False,
         margin=dict(t=40, b=20, l=20, r=20),
-        height=400
+        height=300  # Tamaño reducido
     )
     col1.plotly_chart(fig1, use_container_width=True)
     
@@ -141,18 +132,21 @@ if vista == "Resumen Original":
         hole=0.4,
         title="Distribución por Objetivo R y E",
         color='Objetivo',
-        color_discrete_map={'R': '#161a1d', 'E': '#ba181b'}
+        color_discrete_map=color_mapping
     )
     fig2.update_layout(
         showlegend=False,
         margin=dict(t=40, b=20, l=20, r=20),
-        height=400
+        height=300  # Tamaño reducido
     )
     col2.plotly_chart(fig2, use_container_width=True)
     
-    # Visualizar tabla completa con formato
+    # Visualizar tabla completa con formato, sólo formatear 'Total'
     st.subheader("Tabla Completa")
-    st.dataframe(df.style.format("{:,.2f}"), height=400)
+    st.dataframe(
+        df.style.format({"Total": "{:,.2f}"}),
+        height=400
+    )
 
 # Vista Edición y Ajuste
 elif vista == "Edición y Ajuste":
@@ -219,10 +213,9 @@ elif vista == "Edición y Ajuste":
             st.error(f"La columna '{col}' no existe en los datos editados.")
             st.stop()
 
-    # Verificar que la columna 'Objetivo' contiene solo 'R' y 'E'
-    if not edited_df['Objetivo'].isin(['R', 'E']).all():
-        st.error("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Asegúrate de que solo contenga estos valores.")
-        st.stop()
+    # Verificar que la columna 'Objetivo' contiene solo 'R' y 'E' o NaN
+    if not edited_df['Objetivo'].dropna().isin(['R', 'E']).all():
+        st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en el gráfico de Objetivo.")
 
     # Recalcular la columna 'Total' con los datos editados
     edited_df['Total'] = edited_df.apply(calculate_total, axis=1)
@@ -237,18 +230,10 @@ elif vista == "Edición y Ajuste":
     col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.2f}")
 
     # Resumen por país y categorías (actualizado)
-    summary_by_country_edited = edited_df.groupby('País')[category_columns + ['Total']].sum().reset_index()
+    summary_by_country_edited = edited_df.groupby('País')['Total'].sum().reset_index()
 
-    # Convertir las columnas a numéricas en el resumen actualizado
-    for col in category_columns + ['Total']:
-        if col in summary_by_country_edited.columns:
-            summary_by_country_edited[col] = pd.to_numeric(summary_by_country_edited[col], errors='coerce').fillna(0)
-        else:
-            st.error(f"La columna '{col}' no existe en el resumen por país actualizado.")
-            st.stop()
-
-    # Resumen por Objetivo R y E
-    summary_by_obj_edited = edited_df.groupby('Objetivo')['Total'].sum().reset_index()
+    # Resumen por Objetivo R y E (actualizado, excluyendo NaN)
+    summary_by_obj_edited = edited_df[edited_df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
 
     # Crear los dos gráficos de dona actualizados
     col3, col4 = st.columns(2)
@@ -266,7 +251,7 @@ elif vista == "Edición y Ajuste":
     fig3.update_layout(
         showlegend=False,
         margin=dict(t=40, b=20, l=20, r=20),
-        height=400
+        height=300  # Tamaño reducido
     )
     col3.plotly_chart(fig3, use_container_width=True)
     
@@ -278,12 +263,12 @@ elif vista == "Edición y Ajuste":
         hole=0.4,
         title="Distribución por Objetivo R y E (Actualizado)",
         color='Objetivo',
-        color_discrete_map={'R': '#161a1d', 'E': '#ba181b'}
+        color_discrete_map=color_mapping
     )
     fig4.update_layout(
         showlegend=False,
         margin=dict(t=40, b=20, l=20, r=20),
-        height=400
+        height=300  # Tamaño reducido
     )
     col4.plotly_chart(fig4, use_container_width=True)
 

@@ -17,7 +17,7 @@ df = pd.read_excel(file_path, sheet_name='Original_VPO')
 
 # Asegurarse de que las columnas numéricas estén en el tipo correcto
 numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje', 'Alojamiento',
-                   'Per-diem y Otros', 'Movilidad']
+                   'Per-diem y Otros', 'Movilidad', 'Total']
 for col in numeric_columns:
     df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
@@ -57,6 +57,10 @@ if vista == "Resumen Original":
     # Resumen por país y categorías
     category_columns = ['Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
     summary_by_country = df.groupby('País')[category_columns + ['Total']].sum().reset_index()
+
+    # Convertir las columnas a numéricas en el resumen
+    for col in category_columns + ['Total']:
+        summary_by_country[col] = pd.to_numeric(summary_by_country[col], errors='coerce').fillna(0)
 
     # Mostrar resumen por país en una tabla
     st.subheader("Resumen por País")
@@ -110,7 +114,8 @@ elif vista == "Edición y Ajuste":
     edited_df = pd.DataFrame(grid_response['data'])
 
     # Convertir columnas a numéricas
-    for col in numeric_columns:
+    all_numeric_columns = numeric_columns + category_columns  # Incluimos las columnas de categorías
+    for col in all_numeric_columns:
         edited_df[col] = pd.to_numeric(edited_df[col], errors='coerce').fillna(0)
 
     # Recalcular la columna 'Total' con los datos editados
@@ -120,12 +125,16 @@ elif vista == "Edición y Ajuste":
     total_sum = edited_df['Total'].sum()
     difference = desired_total - total_sum
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     col1.metric("Nuevo Monto Total General (USD)", f"{total_sum:,.2f}")
     col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.2f}")
 
     # Resumen por país y categorías (actualizado)
     summary_by_country_edited = edited_df.groupby('País')[category_columns + ['Total']].sum().reset_index()
+
+    # Convertir las columnas a numéricas en el resumen
+    for col in category_columns + ['Total']:
+        summary_by_country_edited[col] = pd.to_numeric(summary_by_country_edited[col], errors='coerce').fillna(0)
 
     # Mostrar resumen por país
     st.subheader("Resumen por País Actualizado")

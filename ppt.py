@@ -11,14 +11,19 @@ def calculate_total(row):
         (row['Cantidad de Funcionarios'] * row['Movilidad'])
     )
 
-# Cargar los datos
+# Columnas numéricas y de categorías
+numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje', 'Alojamiento',
+                   'Per-diem y Otros', 'Movilidad', 'Total']
+category_columns = ['Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
+all_numeric_columns = numeric_columns + category_columns
+
+# Cargar los datos asegurando los tipos numéricos
 file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que este archivo está en el mismo directorio o proporciona la ruta completa
 df = pd.read_excel(file_path, sheet_name='Original_VPO')
 
-# Asegurarse de que las columnas numéricas estén en el tipo correcto
-numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje', 'Alojamiento',
-                   'Per-diem y Otros', 'Movilidad', 'Total']
-for col in numeric_columns:
+# Eliminar espacios en blanco y convertir a numérico
+for col in all_numeric_columns:
+    df[col] = df[col].astype(str).str.replace(',', '').str.strip()
     df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
 # Calcular la columna 'Total' inicialmente
@@ -53,9 +58,8 @@ vista = st.sidebar.radio(
 
 if vista == "Resumen Original":
     st.title("Resumen General")
-    
+
     # Resumen por país y categorías
-    category_columns = ['Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
     summary_by_country = df.groupby('País')[category_columns + ['Total']].sum().reset_index()
 
     # Convertir las columnas a numéricas en el resumen
@@ -72,10 +76,10 @@ if vista == "Resumen Original":
 
 elif vista == "Edición y Ajuste":
     st.title("Ajuste de Presupuesto")
-    
+
     # Mostrar el monto total deseado (fijo)
     st.subheader(f"Monto Total Deseado: {desired_total:,.2f} USD")
-    
+
     st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
 
     # Configuración de AgGrid para edición
@@ -113,9 +117,9 @@ elif vista == "Edición y Ajuste":
     # Datos editados
     edited_df = pd.DataFrame(grid_response['data'])
 
-    # Convertir columnas a numéricas
-    all_numeric_columns = numeric_columns + category_columns  # Incluimos las columnas de categorías
+    # Eliminar espacios en blanco y convertir a numérico en 'edited_df'
     for col in all_numeric_columns:
+        edited_df[col] = edited_df[col].astype(str).str.replace(',', '').str.strip()
         edited_df[col] = pd.to_numeric(edited_df[col], errors='coerce').fillna(0)
 
     # Recalcular la columna 'Total' con los datos editados
@@ -132,7 +136,7 @@ elif vista == "Edición y Ajuste":
     # Resumen por país y categorías (actualizado)
     summary_by_country_edited = edited_df.groupby('País')[category_columns + ['Total']].sum().reset_index()
 
-    # Convertir las columnas a numéricas en el resumen
+    # Convertir columnas a numéricas en 'summary_by_country_edited'
     for col in category_columns + ['Total']:
         summary_by_country_edited[col] = pd.to_numeric(summary_by_country_edited[col], errors='coerce').fillna(0)
 

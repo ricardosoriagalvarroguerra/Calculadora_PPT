@@ -14,7 +14,7 @@ def calculate_total_misiones(row):
 
 # Función para calcular el total para Consultorías
 def calculate_total_consultorias(row):
-    return row['Monto mensual'] * row['cantidad meses']
+    return row['Nº'] * row['Monto mensual'] * row['cantidad meses']
 
 # Configuración de la página
 st.set_page_config(page_title="VPO", layout="wide")
@@ -361,19 +361,11 @@ elif view == "Consultorías":
         'R': '#d3d3d3'
     }
     
-    # Definir la paleta de colores para Tipo
-    tipo_unique = df_consultorias['tipo'].unique()
-    # Asigna colores específicos si tienes un número fijo de tipos, de lo contrario, usa una paleta predeterminada
-    # Por simplicidad, usaré una paleta de Plotly
-    color_discrete_sequence_tipo = px.colors.qualitative.Pastel
-    tipo_color_mapping = {tipo: color_discrete_sequence_tipo[i % len(color_discrete_sequence_tipo)] for i, tipo in enumerate(tipo_unique)}
-    
-    # Definir la paleta de colores para Cargo
-    cargo_unique = df_consultorias['Cargo'].unique()
-    # Asigna colores específicos si deseas, de lo contrario, usa una paleta predeterminada
-    # Por simplicidad, usaré una paleta de Plotly
-    color_discrete_sequence_cargo = px.colors.qualitative.Pastel
-    cargo_color_mapping = {cargo: color_discrete_sequence_cargo[i % len(color_discrete_sequence_cargo)] for i, cargo in enumerate(cargo_unique)}
+    # Definir la paleta de colores para Tipo con colores específicos
+    tipo_color_mapping = {
+        'Nuevas Operaciones': '#14213d',
+        'Adm. Cartera': '#fca311'
+    }
     
     # Página Resumen Original para Consultorías
     if page == "Resumen Original":
@@ -412,7 +404,7 @@ elif view == "Consultorías":
         )
         col1.plotly_chart(fig1, use_container_width=True)
         
-        # Gráfico de Dona por Tipo
+        # Gráfico de Dona por Tipo con Colores Específicos
         fig2 = px.pie(
             summary_by_tipo,
             names='tipo',
@@ -460,7 +452,7 @@ elif view == "Consultorías":
         # Configurar la columna 'Total' para que se calcule dinámicamente en el lado del cliente
         gb.configure_column('Total', editable=False, valueGetter=JsCode("""
             function(params) {
-                return Number(params.data['Monto mensual']) * Number(params.data['cantidad meses']);
+                return Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses']);
             }
         """), type=["numericColumn"], valueFormatter="x.toLocaleString()")
         
@@ -550,7 +542,7 @@ elif view == "Consultorías":
         )
         col3.plotly_chart(fig3, use_container_width=True)
         
-        # Gráfico de Dona por Tipo (Actualizado)
+        # Gráfico de Dona por Tipo (Actualizado) con Colores Específicos
         fig4 = px.pie(
             summary_by_tipo_edited,
             names='tipo',

@@ -116,7 +116,7 @@ def create_consolidado(deseados):
         return color
     
     # Formatear y estilizar la tabla de Misiones
-    styled_misiones_df = consolidado_misiones_df.style.applymap(highlight_zero, subset=[f"Misiones - Ajuste"])
+    styled_misiones_df = consolidado_misiones_df.style.applymap(highlight_zero, subset=["Misiones - Ajuste"])
     styled_misiones_df = styled_misiones_df.format(
         "{:,.0f}", 
         subset=[
@@ -127,7 +127,7 @@ def create_consolidado(deseados):
     )
     
     # Formatear y estilizar la tabla de Consultorías
-    styled_consultorias_df = consolidado_consultorias_df.style.applymap(highlight_zero, subset=[f"Consultorías - Ajuste"])
+    styled_consultorias_df = consolidado_consultorias_df.style.applymap(highlight_zero, subset=["Consultorías - Ajuste"])
     styled_consultorias_df = styled_consultorias_df.format(
         "{:,.0f}", 
         subset=[
@@ -200,11 +200,33 @@ def handle_page(main_page):
                 
                 return df
 
+            # Definir una clave única para el estado de la sesión
+            session_key = "VPO_Misiones_DPP2025"
+
+            # Cargar datos y gestionar el estado de la sesión
             if page == "DPP 2025":
-                # Cargar datos desde cache si existe
-                if os.path.exists(cache_file):
-                    df = pd.read_csv(cache_file)
-                else:
+                if session_key not in st.session_state:
+                    # Cargar datos desde cache si existe
+                    if os.path.exists(cache_file):
+                        df = pd.read_csv(cache_file)
+                    else:
+                        # Cargar datos desde Excel
+                        try:
+                            df = pd.read_excel(file_path, sheet_name=sheet_name)
+                        except FileNotFoundError:
+                            st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
+                            st.stop()
+                        except Exception as e:
+                            st.error(f"Error al leer el archivo Excel: {e}")
+                            st.stop()
+                        
+                        # Procesar datos
+                        df = process_vpo_misiones_df(df, sheet_name)
+                    
+                    # Asignar al estado de la sesión
+                    st.session_state[session_key] = df
+            else:
+                if session_key not in st.session_state:
                     # Cargar datos desde Excel
                     try:
                         df = pd.read_excel(file_path, sheet_name=sheet_name)
@@ -217,19 +239,11 @@ def handle_page(main_page):
                     
                     # Procesar datos
                     df = process_vpo_misiones_df(df, sheet_name)
-            else:
-                # Cargar datos desde Excel
-                try:
-                    df = pd.read_excel(file_path, sheet_name=sheet_name)
-                except FileNotFoundError:
-                    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                    st.stop()
-                except Exception as e:
-                    st.error(f"Error al leer el archivo Excel: {e}")
-                    st.stop()
-                
-                # Procesar datos
-                df = process_vpo_misiones_df(df, sheet_name)
+                    
+                    # Asignar al estado de la sesión
+                    st.session_state[session_key] = df
+                else:
+                    df = st.session_state[session_key]
             
             # Definir paleta de colores para Objetivo
             objetivo_color_map = {
@@ -333,7 +347,7 @@ def handle_page(main_page):
                 st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
                 
                 # Configuración de AgGrid para edición
-                gb = GridOptionsBuilder.from_dataframe(df)
+                gb = GridOptionsBuilder.from_dataframe(st.session_state[session_key])
                 gb.configure_default_column(editable=True, groupable=True)
                 
                 # Configurar columnas para mostrar sin decimales
@@ -364,7 +378,7 @@ def handle_page(main_page):
                 
                 # Mostrar tabla editable
                 grid_response = AgGrid(
-                    df,
+                    st.session_state[session_key],
                     gridOptions=grid_options,
                     data_return_mode=DataReturnMode.FILTERED,
                     update_mode='MODEL_CHANGED',
@@ -399,6 +413,9 @@ def handle_page(main_page):
                 
                 # Recalcular 'Total' si es necesario
                 edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
+                
+                # Actualizar el estado de la sesión con los datos editados
+                st.session_state[session_key] = edited_df
                 
                 # Calcular métricas sin decimales
                 total_sum = edited_df['Total'].sum()
@@ -508,11 +525,33 @@ def handle_page(main_page):
                 
                 return df
 
+            # Definir una clave única para el estado de la sesión
+            session_key = "VPO_Consultorias_DPP2025"
+
+            # Cargar datos y gestionar el estado de la sesión
             if page == "DPP 2025":
-                # Cargar datos desde cache si existe
-                if os.path.exists(cache_file):
-                    df = pd.read_csv(cache_file)
-                else:
+                if session_key not in st.session_state:
+                    # Cargar datos desde cache si existe
+                    if os.path.exists(cache_file):
+                        df = pd.read_csv(cache_file)
+                    else:
+                        # Cargar datos desde Excel
+                        try:
+                            df = pd.read_excel(file_path, sheet_name=sheet_name)
+                        except FileNotFoundError:
+                            st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
+                            st.stop()
+                        except Exception as e:
+                            st.error(f"Error al leer el archivo Excel: {e}")
+                            st.stop()
+                        
+                        # Procesar datos
+                        df = process_vpo_consultorias_df(df, sheet_name)
+                    
+                    # Asignar al estado de la sesión
+                    st.session_state[session_key] = df
+            else:
+                if session_key not in st.session_state:
                     # Cargar datos desde Excel
                     try:
                         df = pd.read_excel(file_path, sheet_name=sheet_name)
@@ -525,20 +564,17 @@ def handle_page(main_page):
                     
                     # Procesar datos
                     df = process_vpo_consultorias_df(df, sheet_name)
-            else:
-                # Cargar datos desde Excel
-                try:
-                    df = pd.read_excel(file_path, sheet_name=sheet_name)
-                except FileNotFoundError:
-                    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                    st.stop()
-                except Exception as e:
-                    st.error(f"Error al leer el archivo Excel: {e}")
-                    st.stop()
-                
-                # Procesar datos
-                df = process_vpo_consultorias_df(df, sheet_name)
+                    
+                    # Asignar al estado de la sesión
+                    st.session_state[session_key] = df
+                else:
+                    df = st.session_state[session_key]
             
+            # Definir paleta de colores para VPD/AREA
+            vpd_area_unique = df['VPD/AREA'].unique()
+            # Asignar colores únicos a cada VPD/AREA
+            vpd_area_color_map = {area: px.colors.qualitative.Pastel[i % len(px.colors.qualitative.Pastel)] for i, area in enumerate(vpd_area_unique)}
+    
             # Página Requerimiento del área para Consultorías VPO
             if page == "Requerimiento del área":
                 st.header("VPO - Consultorías: Requerimiento del área")
@@ -566,7 +602,7 @@ def handle_page(main_page):
                 st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
                 
                 # Configuración de AgGrid para edición
-                gb = GridOptionsBuilder.from_dataframe(df)
+                gb = GridOptionsBuilder.from_dataframe(st.session_state[session_key])
                 gb.configure_default_column(editable=True, groupable=True)
                 
                 # Configurar columnas para mostrar sin decimales
@@ -591,7 +627,7 @@ def handle_page(main_page):
                 
                 # Mostrar tabla editable
                 grid_response = AgGrid(
-                    df,
+                    st.session_state[session_key],
                     gridOptions=grid_options,
                     data_return_mode=DataReturnMode.FILTERED,
                     update_mode='MODEL_CHANGED',
@@ -621,6 +657,9 @@ def handle_page(main_page):
                 # Recalcular 'Total'
                 edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
                 
+                # Actualizar el estado de la sesión con los datos editados
+                st.session_state[session_key] = edited_df
+                
                 # Calcular métricas sin decimales
                 total_sum = edited_df['Total'].sum()
                 difference = desired_total - total_sum
@@ -638,7 +677,7 @@ def handle_page(main_page):
                 edited_df['Total'] = edited_df['Total'].round(0)
                 csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_consultorias_vpo.csv", mime="text/csv")
-
+    
     elif main_page == "VPD":
         # Seleccionar Vista: Misiones o Consultorías
         view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPD_view")
@@ -676,11 +715,33 @@ def handle_page(main_page):
                 
                 return df
 
+            # Definir una clave única para el estado de la sesión
+            session_key = "VPD_Misiones_DPP2025"
+
+            # Cargar datos y gestionar el estado de la sesión
             if page == "DPP 2025":
-                # Cargar datos desde cache si existe
-                if os.path.exists(cache_file):
-                    df = pd.read_csv(cache_file)
-                else:
+                if session_key not in st.session_state:
+                    # Cargar datos desde cache si existe
+                    if os.path.exists(cache_file):
+                        df = pd.read_csv(cache_file)
+                    else:
+                        # Cargar datos desde Excel
+                        try:
+                            df = pd.read_excel(file_path, sheet_name=sheet_name)
+                        except FileNotFoundError:
+                            st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
+                            st.stop()
+                        except Exception as e:
+                            st.error(f"Error al leer el archivo Excel: {e}")
+                            st.stop()
+                        
+                        # Procesar datos
+                        df = process_vpd_misiones_df(df, sheet_name)
+                    
+                    # Asignar al estado de la sesión
+                    st.session_state[session_key] = df
+            else:
+                if session_key not in st.session_state:
                     # Cargar datos desde Excel
                     try:
                         df = pd.read_excel(file_path, sheet_name=sheet_name)
@@ -693,19 +754,11 @@ def handle_page(main_page):
                     
                     # Procesar datos
                     df = process_vpd_misiones_df(df, sheet_name)
-            else:
-                # Cargar datos desde Excel
-                try:
-                    df = pd.read_excel(file_path, sheet_name=sheet_name)
-                except FileNotFoundError:
-                    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                    st.stop()
-                except Exception as e:
-                    st.error(f"Error al leer el archivo Excel: {e}")
-                    st.stop()
-                
-                # Procesar datos
-                df = process_vpd_misiones_df(df, sheet_name)
+                    
+                    # Asignar al estado de la sesión
+                    st.session_state[session_key] = df
+                else:
+                    df = st.session_state[session_key]
             
             # Página Requerimiento del área para Misiones VPD
             if page == "Requerimiento del área":
@@ -720,7 +773,7 @@ def handle_page(main_page):
                         "Costo de Pasaje": "{:,.0f}",
                         "Alojamiento": "{:,.0f}",
                         "Per-diem y Otros": "{:,.0f}",
-                        "Movilidad": "{:,.0f}",
+                        "Movilidad": "{:.0f}",
                         "Total": "{:,.0f}"
                     }),
                     height=400
@@ -737,7 +790,7 @@ def handle_page(main_page):
                 st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
     
                 # Configuración de AgGrid para edición
-                gb = GridOptionsBuilder.from_dataframe(df)
+                gb = GridOptionsBuilder.from_dataframe(st.session_state[session_key])
                 gb.configure_default_column(editable=True, groupable=True)
     
                 # Configurar columnas para mostrar sin decimales
@@ -768,7 +821,7 @@ def handle_page(main_page):
     
                 # Mostrar tabla editable
                 grid_response = AgGrid(
-                    df,
+                    st.session_state[session_key],
                     gridOptions=grid_options,
                     data_return_mode=DataReturnMode.FILTERED,
                     update_mode='MODEL_CHANGED',
@@ -799,6 +852,9 @@ def handle_page(main_page):
     
                 # Recalcular 'Total'
                 edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
+    
+                # Actualizar el estado de la sesión con los datos editados
+                st.session_state[session_key] = edited_df
     
                 # Calcular métricas sin decimales
                 total_sum = edited_df['Total'].sum()
@@ -849,11 +905,33 @@ def handle_page(main_page):
                 
                 return df
 
+            # Definir una clave única para el estado de la sesión
+            session_key = "VPD_Consultorias_DPP2025"
+
+            # Cargar datos y gestionar el estado de la sesión
             if page == "DPP 2025":
-                # Cargar datos desde cache si existe
-                if os.path.exists(cache_file):
-                    df = pd.read_csv(cache_file)
-                else:
+                if session_key not in st.session_state:
+                    # Cargar datos desde cache si existe
+                    if os.path.exists(cache_file):
+                        df = pd.read_csv(cache_file)
+                    else:
+                        # Cargar datos desde Excel
+                        try:
+                            df = pd.read_excel(file_path, sheet_name=sheet_name)
+                        except FileNotFoundError:
+                            st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
+                            st.stop()
+                        except Exception as e:
+                            st.error(f"Error al leer el archivo Excel: {e}")
+                            st.stop()
+                        
+                        # Procesar datos
+                        df = process_vpd_consultorias_df(df, sheet_name)
+                    
+                    # Asignar al estado de la sesión
+                    st.session_state[session_key] = df
+            else:
+                if session_key not in st.session_state:
                     # Cargar datos desde Excel
                     try:
                         df = pd.read_excel(file_path, sheet_name=sheet_name)
@@ -866,19 +944,11 @@ def handle_page(main_page):
                     
                     # Procesar datos
                     df = process_vpd_consultorias_df(df, sheet_name)
-            else:
-                # Cargar datos desde Excel
-                try:
-                    df = pd.read_excel(file_path, sheet_name=sheet_name)
-                except FileNotFoundError:
-                    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                    st.stop()
-                except Exception as e:
-                    st.error(f"Error al leer el archivo Excel: {e}")
-                    st.stop()
-                
-                # Procesar datos
-                df = process_vpd_consultorias_df(df, sheet_name)
+                    
+                    # Asignar al estado de la sesión
+                    st.session_state[session_key] = df
+                else:
+                    df = st.session_state[session_key]
             
             # Definir paleta de colores para VPD/AREA
             vpd_area_unique = df['VPD/AREA'].unique()
@@ -942,7 +1012,7 @@ def handle_page(main_page):
                 st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
     
                 # Configuración de AgGrid para edición
-                gb = GridOptionsBuilder.from_dataframe(df)
+                gb = GridOptionsBuilder.from_dataframe(st.session_state[session_key])
                 gb.configure_default_column(editable=True, groupable=True)
     
                 # Configurar columnas para mostrar sin decimales
@@ -967,7 +1037,7 @@ def handle_page(main_page):
     
                 # Mostrar tabla editable
                 grid_response = AgGrid(
-                    df,
+                    st.session_state[session_key],
                     gridOptions=grid_options,
                     data_return_mode=DataReturnMode.FILTERED,
                     update_mode='MODEL_CHANGED',
@@ -996,6 +1066,9 @@ def handle_page(main_page):
     
                 # Recalcular 'Total'
                 edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
+    
+                # Actualizar el estado de la sesión con los datos editados
+                st.session_state[session_key] = edited_df
     
                 # Calcular métricas sin decimales
                 total_sum = edited_df['Total'].sum()
@@ -1026,7 +1099,7 @@ def handle_page(main_page):
                 edited_df['Total'] = edited_df['Total'].round(0)
                 csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_consultorias_vpd.csv", mime="text/csv")
-    
+
     elif main_page == "Consolidado":
         create_consolidado(deseados)
 

@@ -5,7 +5,7 @@ import plotly.express as px
 
 # Función para calcular el total para Misiones VPO y VPD
 def calculate_total_misiones(row):
-    return (
+    return round(
         (row['Cantidad de Funcionarios'] * row['Costo de Pasaje']) +
         (row['Cantidad de Funcionarios'] * row['Días'] * row['Alojamiento']) +
         (row['Cantidad de Funcionarios'] * row['Días'] * row['Per-diem y Otros']) +
@@ -14,10 +14,10 @@ def calculate_total_misiones(row):
 
 # Función para calcular el total para Consultorías VPO y VPD
 def calculate_total_consultorias(row):
-    return row['Nº'] * row['Monto mensual'] * row['cantidad meses']
+    return round(row['Nº'] * row['Monto mensual'] * row['cantidad meses'])
 
 # Configuración de la página
-st.set_page_config(page_title="FONPLATA", layout="wide")
+st.set_page_config(page_title="Presupuesto", layout="wide")
 
 # Estilo personalizado para la aplicación
 st.markdown("""
@@ -38,12 +38,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Título de la aplicación
-st.title("VPO y VPD")
-
 # Sidebar para selección de página principal, vista y subpágina
 st.sidebar.title("Navegación")
 main_page = st.sidebar.selectbox("Selecciona una página principal:", ("VPO", "VPD"))
+
+# Título dinámico de la aplicación
+st.title(main_page)
 
 # Función para manejar cada página principal
 def handle_page(main_page):
@@ -237,7 +237,7 @@ def handle_page(main_page):
                     st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de Objetivo.")
                 
                 # Recalcular 'Total' si es necesario
-                edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1).round(0)
+                edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
                 
                 # Calcular métricas sin decimales
                 total_sum = edited_df['Total'].sum()
@@ -307,8 +307,9 @@ def handle_page(main_page):
                     )
                     col4.plotly_chart(fig4, use_container_width=True)
                 
-                # Descargar tabla modificada
+                # Descargar tabla modificada sin decimales
                 st.subheader("Descargar Tabla Modificada - Misiones VPO")
+                edited_df['Total'] = edited_df['Total'].round(0)
                 csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_misiones_vpo.csv", mime="text/csv")
         
@@ -409,7 +410,7 @@ def handle_page(main_page):
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
                 
                 # Recalcular 'Total'
-                edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1).round(0)
+                edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
                 
                 # Calcular métricas sin decimales
                 total_sum = edited_df['Total'].sum()
@@ -420,8 +421,9 @@ def handle_page(main_page):
                 col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
                 col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
                 
-                # Descargar tabla modificada
+                # Descargar tabla modificada sin decimales
                 st.subheader("Descargar Tabla Modificada - Consultorías VPO")
+                edited_df['Total'] = edited_df['Total'].round(0)
                 csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_consultorias_vpo.csv", mime="text/csv")
     
@@ -534,7 +536,7 @@ def handle_page(main_page):
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
     
                 # Recalcular 'Total'
-                edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1).round(0)
+                edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
     
                 # Calcular métricas sin decimales
                 total_sum = edited_df['Total'].sum()
@@ -545,8 +547,9 @@ def handle_page(main_page):
                 col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
                 col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
     
-                # Descargar tabla modificada
+                # Descargar tabla modificada sin decimales
                 st.subheader("Descargar Tabla Modificada - Misiones VPD")
+                edited_df['Total'] = edited_df['Total'].round(0)
                 csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_misiones_vpd.csv", mime="text/csv")
         
@@ -682,7 +685,7 @@ def handle_page(main_page):
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
     
                 # Recalcular 'Total'
-                edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1).round(0)
+                edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
     
                 # Calcular métricas sin decimales
                 total_sum = edited_df['Total'].sum()
@@ -697,8 +700,9 @@ def handle_page(main_page):
                 st.subheader("Tabla Completa - Consultorías VPD")
                 st.dataframe(edited_df.style.format({"Total": "{:,.0f}"}), height=400)
     
-                # Descargar tabla modificada
+                # Descargar tabla modificada sin decimales
                 st.subheader("Descargar Tabla Modificada - Consultorías VPD")
+                edited_df['Total'] = edited_df['Total'].round(0)
                 csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_consultorias_vpd.csv", mime="text/csv")
 

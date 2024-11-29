@@ -46,104 +46,6 @@ main_page = st.sidebar.selectbox("Selecciona una página principal:", ("VPO", "V
 # Título dinámico de la aplicación
 st.title(main_page)
 
-# Función para guardar datos en cache
-def save_to_cache(df, unidad, tipo):
-    cache_dir = 'cache'
-    if not os.path.exists(cache_dir):
-        os.makedirs(cache_dir)
-    cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
-    df.to_csv(cache_file, index=False)
-
-# Función para crear el consolidado dividido en Misiones y Consultorías
-def create_consolidado(deseados):
-    st.header("Consolidado")
-    cache_dir = 'cache'
-    unidades = ['VPO', 'VPD']
-    tipos = ['Misiones', 'Consultorías']
-    
-    # Inicializar listas para almacenar los datos de Misiones y Consultorías
-    data_misiones = []
-    data_consultorias = []
-    
-    for unidad in unidades:
-        # Datos para Misiones
-        row_misiones = {'Unidad Organizacional': unidad}
-        tipo = 'Misiones'
-        cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
-        if os.path.exists(cache_file):
-            df = pd.read_csv(cache_file)
-            actual = df['Total'].sum()
-            deseado = deseados[unidad][tipo]
-            ajuste = deseado - actual
-            row_misiones[f"{tipo} - Actual"] = actual
-            row_misiones[f"{tipo} - Ajuste"] = ajuste
-            row_misiones[f"{tipo} - Deseado"] = deseado
-        else:
-            # Si no hay datos, asumimos que el actual es 0
-            deseado = deseados[unidad][tipo]
-            row_misiones[f"{tipo} - Actual"] = 0
-            row_misiones[f"{tipo} - Ajuste"] = deseado
-            row_misiones[f"{tipo} - Deseado"] = deseado
-        data_misiones.append(row_misiones)
-        
-        # Datos para Consultorías
-        row_consultorias = {'Unidad Organizacional': unidad}
-        tipo = 'Consultorías'
-        cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
-        if os.path.exists(cache_file):
-            df = pd.read_csv(cache_file)
-            actual = df['Total'].sum()
-            deseado = deseados[unidad][tipo]
-            ajuste = deseado - actual
-            row_consultorias[f"{tipo} - Actual"] = actual
-            row_consultorias[f"{tipo} - Ajuste"] = ajuste
-            row_consultorias[f"{tipo} - Deseado"] = deseado
-        else:
-            # Si no hay datos, asumimos que el actual es 0
-            deseado = deseados[unidad][tipo]
-            row_consultorias[f"{tipo} - Actual"] = 0
-            row_consultorias[f"{tipo} - Ajuste"] = deseado
-            row_consultorias[f"{tipo} - Deseado"] = deseado
-        data_consultorias.append(row_consultorias)
-    
-    # Crear DataFrames separados
-    consolidado_misiones_df = pd.DataFrame(data_misiones)
-    consolidado_consultorias_df = pd.DataFrame(data_consultorias)
-    
-    # Aplicar formato y estilo
-    def highlight_zero(val):
-        color = 'background-color: #90ee90' if val == 0 else ''
-        return color
-    
-    # Formatear y estilizar la tabla de Misiones
-    styled_misiones_df = consolidado_misiones_df.style.applymap(highlight_zero, subset=[f"Misiones - Ajuste"])
-    styled_misiones_df = styled_misiones_df.format(
-        "{:,.0f}", 
-        subset=[
-            "Misiones - Actual",
-            "Misiones - Ajuste",
-            "Misiones - Deseado"
-        ]
-    )
-    
-    # Formatear y estilizar la tabla de Consultorías
-    styled_consultorias_df = consolidado_consultorias_df.style.applymap(highlight_zero, subset=[f"Consultorías - Ajuste"])
-    styled_consultorias_df = styled_consultorias_df.format(
-        "{:,.0f}", 
-        subset=[
-            "Consultorías - Actual",
-            "Consultorías - Ajuste",
-            "Consultorías - Deseado"
-        ]
-    )
-    
-    # Mostrar las tablas por separado
-    st.subheader("Consolidado - Misiones")
-    st.dataframe(styled_misiones_df)
-    
-    st.subheader("Consolidado - Consultorías")
-    st.dataframe(styled_consultorias_df)
-
 # Función para manejar cada página principal
 def handle_page(main_page):
     # Definir los montos deseados para cada sección
@@ -638,7 +540,7 @@ def handle_page(main_page):
                 edited_df['Total'] = edited_df['Total'].round(0)
                 csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_consultorias_vpo.csv", mime="text/csv")
-
+    
     elif main_page == "VPD":
         # Seleccionar Vista: Misiones o Consultorías
         view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPD_view")
@@ -1026,9 +928,56 @@ def handle_page(main_page):
                 edited_df['Total'] = edited_df['Total'].round(0)
                 csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_consultorias_vpd.csv", mime="text/csv")
-    
+
     elif main_page == "Consolidado":
         create_consolidado(deseados)
+
+# Función para guardar datos en cache
+def save_to_cache(df, unidad, tipo):
+    cache_dir = 'cache'
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+    cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
+    df.to_csv(cache_file, index=False)
+
+# Función para crear el consolidado
+def create_consolidado(deseados):
+    st.header("Consolidado")
+    cache_dir = 'cache'
+    unidades = ['VPO', 'VPD']
+    tipos = ['Misiones', 'Consultorías']
+    data = []
+    for unidad in unidades:
+        row = {'Unidad Organizacional': unidad}
+        for tipo in tipos:
+            cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
+            if os.path.exists(cache_file):
+                df = pd.read_csv(cache_file)
+                actual = df['Total'].sum()
+                deseado = deseados[unidad][tipo]
+                ajuste = deseado - actual
+                row[f"{tipo} - Actual"] = actual
+                row[f"{tipo} - Ajuste"] = ajuste
+                row[f"{tipo} - Deseado"] = deseado
+            else:
+                # Si no hay datos, asumimos que el actual es 0
+                deseado = deseados[unidad][tipo]
+                row[f"{tipo} - Actual"] = 0
+                row[f"{tipo} - Ajuste"] = deseado
+                row[f"{tipo} - Deseado"] = deseado
+        data.append(row)
+    consolidado_df = pd.DataFrame(data)
+    
+    # Aplicar formato y estilo
+    def highlight_zero(val):
+        color = 'background-color: #90ee90' if val == 0 else ''
+        return color
+    
+    # Aplicar formateo condicional
+    styled_df = consolidado_df.style.applymap(highlight_zero, subset=[f"{tipo} - Ajuste" for tipo in tipos])
+    styled_df = styled_df.format("{:,.0f}", subset=[f"{tipo} - Actual" for tipo in tipos] + [f"{tipo} - Ajuste" for tipo in tipos] + [f"{tipo} - Deseado" for tipo in tipos])
+    
+    st.dataframe(styled_df)
 
 # Ejecutar la función según la selección
 handle_page(main_page)

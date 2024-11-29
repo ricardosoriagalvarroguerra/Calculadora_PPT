@@ -125,12 +125,12 @@ if vista == "Resumen Original":
                     hole=0.4,
                     title=country_name,
                     color=labels,
-                    color_discrete_map=color_mapping,
-                    showlegend=False
+                    color_discrete_map=color_mapping
                 )
 
-                # Ajustar tamaño del gráfico
+                # Actualizar el layout para eliminar la leyenda y ajustar el tamaño
                 fig.update_layout(
+                    showlegend=False,
                     margin=dict(t=40, b=20, l=20, r=20),
                     height=250
                 )
@@ -249,12 +249,12 @@ elif vista == "Edición y Ajuste":
                     hole=0.4,
                     title=country_name,
                     color=labels,
-                    color_discrete_map=color_mapping,
-                    showlegend=False
+                    color_discrete_map=color_mapping
                 )
 
-                # Ajustar tamaño del gráfico
+                # Actualizar el layout para eliminar la leyenda y ajustar el tamaño
                 fig.update_layout(
+                    showlegend=False,  # Eliminar leyenda
                     margin=dict(t=40, b=20, l=20, r=20),
                     height=250
                 )

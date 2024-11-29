@@ -36,6 +36,12 @@ st.markdown("""
     .stDataFrame div, .stDataFrame th, .stDataFrame td {
         text-align: right;
     }
+    /* Estilos para las tablas */
+    .ag-header-cell {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        font-weight: bold !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -977,7 +983,23 @@ def create_consolidado(deseados):
     styled_df = consolidado_df.style.applymap(highlight_zero, subset=[f"{tipo} - Ajuste" for tipo in tipos])
     styled_df = styled_df.format("{:,.0f}", subset=[f"{tipo} - Actual" for tipo in tipos] + [f"{tipo} - Ajuste" for tipo in tipos] + [f"{tipo} - Deseado" for tipo in tipos])
     
-    st.dataframe(styled_df)
+    # Aplicar estilos al encabezado y celdas
+    styled_df = styled_df.set_table_styles([
+        {
+            'selector': 'th',
+            'props': [('background-color', '#FFFFFF'), ('color', '#000000'), ('font-weight', 'bold')]
+        },
+        {
+            'selector': 'td',
+            'props': [('text-align', 'right')]
+        }
+    ])
+    
+    # Ajustar el ancho de las columnas
+    styled_df = styled_df.set_properties(**{'width': '120px'})
+    
+    # Mostrar la tabla estilizada
+    st.table(styled_df)
 
 # Ejecutar la función según la selección
 handle_page(main_page)

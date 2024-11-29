@@ -264,7 +264,7 @@ def handle_page(main_page):
                     summary_country,
                     names='País',
                     values='Total',
-                    hole=0.4,
+                    hole=0.4,  # Puedes reducir este valor para un anillo más grueso
                     title="Montos Totales por País",
                     color='País',
                     color_discrete_map=pais_color_map
@@ -278,8 +278,8 @@ def handle_page(main_page):
                         xanchor="left",
                         x=-0.1
                     ),
-                    margin=dict(t=60, b=20, l=150, r=20),
-                    height=300
+                    margin=dict(t=60, b=20, l=50, r=20),  # Reducir margen izquierdo
+                    height=400  # Aumentar altura
                 )
                 col1.plotly_chart(fig1, use_container_width=True)
                 
@@ -288,7 +288,7 @@ def handle_page(main_page):
                     summary_obj,
                     names='Objetivo',
                     values='Total',
-                    hole=0.4,
+                    hole=0.4,  # Puedes reducir este valor para un anillo más grueso
                     title="Distribución por Objetivo R y E",
                     color='Objetivo',
                     color_discrete_map=objetivo_color_map
@@ -302,8 +302,8 @@ def handle_page(main_page):
                         xanchor="left",
                         x=-0.1
                     ),
-                    margin=dict(t=60, b=20, l=150, r=20),
-                    height=300
+                    margin=dict(t=60, b=20, l=50, r=20),  # Reducir margen izquierdo
+                    height=400  # Aumentar altura
                 )
                 col2.plotly_chart(fig2, use_container_width=True)
                 
@@ -424,7 +424,7 @@ def handle_page(main_page):
                     summary_country,
                     names='País',
                     values='Total',
-                    hole=0.4,
+                    hole=0.4,  # Puedes reducir este valor para un anillo más grueso
                     title="Montos Totales por País (Actualizado)",
                     color='País',
                     color_discrete_map=pais_color_map
@@ -438,8 +438,8 @@ def handle_page(main_page):
                         xanchor="left",
                         x=-0.1
                     ),
-                    margin=dict(t=60, b=20, l=150, r=20),
-                    height=300
+                    margin=dict(t=60, b=20, l=50, r=20),  # Reducir margen izquierdo
+                    height=400  # Aumentar altura
                 )
                 col3.plotly_chart(fig3, use_container_width=True)
                 
@@ -449,7 +449,7 @@ def handle_page(main_page):
                         summary_obj,
                         names='Objetivo',
                         values='Total',
-                        hole=0.4,
+                        hole=0.4,  # Puedes reducir este valor para un anillo más grueso
                         title="Distribución por Objetivo R y E (Actualizado)",
                         color='Objetivo',
                         color_discrete_map=objetivo_color_map
@@ -463,8 +463,8 @@ def handle_page(main_page):
                             xanchor="left",
                             x=-0.1
                         ),
-                        margin=dict(t=60, b=20, l=150, r=20),
-                        height=300
+                        margin=dict(t=60, b=20, l=50, r=20),  # Reducir margen izquierdo
+                        height=400  # Aumentar altura
                     )
                     col4.plotly_chart(fig4, use_container_width=True)
                 
@@ -900,7 +900,7 @@ def handle_page(main_page):
                     summary_vpd_area,
                     names='VPD/AREA',
                     values='Total',
-                    hole=0.4,
+                    hole=0.4,  # Puedes reducir este valor para un anillo más grueso
                     title="Distribución por VPD/AREA",
                     color='VPD/AREA',
                     color_discrete_map=vpd_area_color_map
@@ -914,8 +914,8 @@ def handle_page(main_page):
                         xanchor="left",
                         x=-0.1
                     ),
-                    margin=dict(t=60, b=20, l=150, r=20),
-                    height=300
+                    margin=dict(t=60, b=20, l=50, r=20),  # Reducir margen izquierdo
+                    height=400  # Aumentar altura
                 )
                 col1.plotly_chart(fig1, use_container_width=True)
                 
@@ -1026,7 +1026,7 @@ def handle_page(main_page):
                 edited_df['Total'] = edited_df['Total'].round(0)
                 csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_consultorias_vpd.csv", mime="text/csv")
-    
+
     elif main_page == "Consolidado":
         create_consolidado(deseados)
 

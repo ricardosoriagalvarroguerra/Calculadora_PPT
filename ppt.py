@@ -33,6 +33,11 @@ except Exception as e:
     st.error(f"Error al leer el archivo Excel: {e}")
     st.stop()
 
+# Verificar que la columna 'Objetivo' exista
+if 'Objetivo' not in df.columns:
+    st.error("La columna 'Objetivo' no existe en el archivo Excel. Asegúrate de que está presente y contiene valores 'R' y 'E'.")
+    st.stop()
+
 # Limpiar y convertir las columnas numéricas
 for col in all_numeric_columns:
     if col in df.columns:
@@ -41,6 +46,11 @@ for col in all_numeric_columns:
     else:
         st.error(f"La columna '{col}' no existe en el archivo Excel.")
         st.stop()
+
+# Verificar que la columna 'Objetivo' contiene solo 'R' y 'E'
+if not df['Objetivo'].isin(['R', 'E']).all():
+    st.error("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Asegúrate de que solo contenga estos valores.")
+    st.stop()
 
 # Calcular la columna 'Total' inicialmente
 df['Total'] = df.apply(calculate_total, axis=1)
@@ -88,7 +98,7 @@ vista = st.sidebar.radio(
 # Vista Resumen Original
 if vista == "Resumen Original":
     st.title("Resumen General")
-
+    
     # Resumen por país y categorías
     summary_by_country = df.groupby('País')[category_columns + ['Total']].sum().reset_index()
 
@@ -100,43 +110,46 @@ if vista == "Resumen Original":
             st.error(f"La columna '{col}' no existe en el resumen por país.")
             st.stop()
 
-    # Mostrar resumen por país en gráficos de dona
-    st.subheader("Distribución de Costos por País")
+    # Resumen por Objetivo R y E
+    summary_by_obj = df.groupby('Objetivo')['Total'].sum().reset_index()
 
-    # Determinar el número de columnas por fila (ejemplo: 3)
-    num_cols_per_row = 3
-    num_countries = summary_by_country.shape[0]
-    rows = (num_countries // num_cols_per_row) + (num_countries % num_cols_per_row > 0)
-
-    for i in range(rows):
-        cols = st.columns(num_cols_per_row)
-        for j in range(num_cols_per_row):
-            country_index = i * num_cols_per_row + j
-            if country_index < num_countries:
-                country_data = summary_by_country.iloc[country_index]
-                country_name = country_data['País']
-                values = country_data[category_columns].values
-                labels = category_columns
-
-                # Crear gráfico de dona
-                fig = px.pie(
-                    names=labels,
-                    values=values,
-                    hole=0.4,
-                    title=country_name,
-                    color=labels,
-                    color_discrete_map=color_mapping
-                )
-
-                # Actualizar el layout para eliminar la leyenda y ajustar el tamaño
-                fig.update_layout(
-                    showlegend=False,
-                    margin=dict(t=40, b=20, l=20, r=20),
-                    height=250
-                )
-
-                cols[j].plotly_chart(fig, use_container_width=True)
-
+    # Crear los dos gráficos de dona
+    col1, col2 = st.columns(2)
+    
+    # Gráfico de Dona de Montos Totales por País
+    fig1 = px.pie(
+        summary_by_country,
+        names='País',
+        values='Total',
+        hole=0.4,
+        title="Montos Totales por País",
+        color='País',
+        color_discrete_sequence=px.colors.qualitative.Pastel
+    )
+    fig1.update_layout(
+        showlegend=False,
+        margin=dict(t=40, b=20, l=20, r=20),
+        height=400
+    )
+    col1.plotly_chart(fig1, use_container_width=True)
+    
+    # Gráfico de Dona por Objetivo R y E
+    fig2 = px.pie(
+        summary_by_obj,
+        names='Objetivo',
+        values='Total',
+        hole=0.4,
+        title="Distribución por Objetivo R y E",
+        color='Objetivo',
+        color_discrete_map={'R': '#161a1d', 'E': '#ba181b'}
+    )
+    fig2.update_layout(
+        showlegend=False,
+        margin=dict(t=40, b=20, l=20, r=20),
+        height=400
+    )
+    col2.plotly_chart(fig2, use_container_width=True)
+    
     # Visualizar tabla completa con formato
     st.subheader("Tabla Completa")
     st.dataframe(df.style.format("{:,.2f}"), height=400)
@@ -190,6 +203,11 @@ elif vista == "Edición y Ajuste":
         st.error("La columna 'País' está ausente en los datos editados.")
         st.stop()
 
+    # Verificar si 'Objetivo' está presente
+    if 'Objetivo' not in edited_df.columns:
+        st.error("La columna 'Objetivo' está ausente en los datos editados.")
+        st.stop()
+
     # Limpiar y convertir las columnas numéricas en 'edited_df'
     for col in all_numeric_columns:
         if col in edited_df.columns:
@@ -200,6 +218,11 @@ elif vista == "Edición y Ajuste":
         else:
             st.error(f"La columna '{col}' no existe en los datos editados.")
             st.stop()
+
+    # Verificar que la columna 'Objetivo' contiene solo 'R' y 'E'
+    if not edited_df['Objetivo'].isin(['R', 'E']).all():
+        st.error("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Asegúrate de que solo contenga estos valores.")
+        st.stop()
 
     # Recalcular la columna 'Total' con los datos editados
     edited_df['Total'] = edited_df.apply(calculate_total, axis=1)
@@ -224,42 +247,45 @@ elif vista == "Edición y Ajuste":
             st.error(f"La columna '{col}' no existe en el resumen por país actualizado.")
             st.stop()
 
-    # Mostrar resumen por país actualizado en gráficos de dona
-    st.subheader("Distribución de Costos por País Actualizado")
+    # Resumen por Objetivo R y E
+    summary_by_obj_edited = edited_df.groupby('Objetivo')['Total'].sum().reset_index()
 
-    # Determinar el número de columnas por fila (ejemplo: 3)
-    num_cols_per_row = 3
-    num_countries = summary_by_country_edited.shape[0]
-    rows = (num_countries // num_cols_per_row) + (num_countries % num_cols_per_row > 0)
-
-    for i in range(rows):
-        cols = st.columns(num_cols_per_row)
-        for j in range(num_cols_per_row):
-            country_index = i * num_cols_per_row + j
-            if country_index < num_countries:
-                country_data = summary_by_country_edited.iloc[country_index]
-                country_name = country_data['País']
-                values = country_data[category_columns].values
-                labels = category_columns
-
-                # Crear gráfico de dona
-                fig = px.pie(
-                    names=labels,
-                    values=values,
-                    hole=0.4,
-                    title=country_name,
-                    color=labels,
-                    color_discrete_map=color_mapping
-                )
-
-                # Actualizar el layout para eliminar la leyenda y ajustar el tamaño
-                fig.update_layout(
-                    showlegend=False,  # Eliminar leyenda
-                    margin=dict(t=40, b=20, l=20, r=20),
-                    height=250
-                )
-
-                cols[j].plotly_chart(fig, use_container_width=True)
+    # Crear los dos gráficos de dona actualizados
+    col3, col4 = st.columns(2)
+    
+    # Gráfico de Dona de Montos Totales por País (Actualizado)
+    fig3 = px.pie(
+        summary_by_country_edited,
+        names='País',
+        values='Total',
+        hole=0.4,
+        title="Montos Totales por País (Actualizado)",
+        color='País',
+        color_discrete_sequence=px.colors.qualitative.Pastel
+    )
+    fig3.update_layout(
+        showlegend=False,
+        margin=dict(t=40, b=20, l=20, r=20),
+        height=400
+    )
+    col3.plotly_chart(fig3, use_container_width=True)
+    
+    # Gráfico de Dona por Objetivo R y E (Actualizado)
+    fig4 = px.pie(
+        summary_by_obj_edited,
+        names='Objetivo',
+        values='Total',
+        hole=0.4,
+        title="Distribución por Objetivo R y E (Actualizado)",
+        color='Objetivo',
+        color_discrete_map={'R': '#161a1d', 'E': '#ba181b'}
+    )
+    fig4.update_layout(
+        showlegend=False,
+        margin=dict(t=40, b=20, l=20, r=20),
+        height=400
+    )
+    col4.plotly_chart(fig4, use_container_width=True)
 
     # Descargar la tabla modificada
     st.subheader("Descargar Tabla Modificada")

@@ -138,10 +138,10 @@ def create_consolidado(deseados):
     )
 
     # Mostrar las tablas por separado
-    st.subheader("Consolidado - Misiones")
+    st.subheader("Misiones")
     st.dataframe(styled_misiones_df)
 
-    st.subheader("Consolidado - Consultorías")
+    st.subheader("Consultorías")
     st.dataframe(styled_consultorias_df)
 
 # Función auxiliar para crear gráficos de dona con anillo más delgado y tamaño más pequeño

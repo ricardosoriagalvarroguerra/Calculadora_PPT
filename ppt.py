@@ -56,7 +56,7 @@ def save_to_cache(df, unidad, tipo):
 
 # Función para crear el consolidado dividido en Misiones y Consultorías
 def create_consolidado(deseados):
-    st.header("Consolidado")
+    st.header("")
     cache_dir = 'cache'
     unidades = ['VPO', 'VPD']
     tipos = ['Misiones', 'Consultorías']

@@ -717,6 +717,65 @@ def handle_page(main_page):
                 col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
                 col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
     
+                # Resumen por País y Objetivo
+                summary_country = edited_df.groupby('País')['Total'].sum().reset_index()
+                if 'Objetivo' in edited_df.columns:
+                    summary_obj = edited_df[edited_df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
+                else:
+                    summary_obj = pd.DataFrame(columns=['Objetivo', 'Total'])
+    
+                # Crear gráficos de dona actualizados
+                col3, col4 = st.columns(2)
+    
+                # Gráfico de Dona: Montos Totales por País (Actualizado)
+                fig3 = px.pie(
+                    summary_country,
+                    names='País',
+                    values='Total',
+                    hole=0.4,
+                    title="Montos Totales por País (Actualizado)",
+                    color='País',
+                    color_discrete_map=pais_color_map
+                )
+                fig3.update_layout(
+                    showlegend=True,
+                    legend=dict(
+                        orientation="v",
+                        yanchor="top",
+                        y=1,
+                        xanchor="left",
+                        x=-0.1
+                    ),
+                    margin=dict(t=60, b=20, l=150, r=20),
+                    height=300
+                )
+                col3.plotly_chart(fig3, use_container_width=True)
+    
+                # Gráfico de Dona: Distribución por Objetivo R y E (Actualizado)
+                if not summary_obj.empty:
+                    fig4 = px.pie(
+                        summary_obj,
+                        names='Objetivo',
+                        values='Total',
+                        hole=0.4,
+                        title="Distribución por Objetivo R y E (Actualizado)",
+                        color='Objetivo',
+                        color_discrete_map=objetivo_color_map
+                    )
+                    fig4.update_layout(
+                        showlegend=True,
+                        legend=dict(
+                            orientation="v",
+                            yanchor="top",
+                            y=1,
+                            xanchor="left",
+                            x=-0.1
+                        ),
+                        margin=dict(t=60, b=20, l=150, r=20),
+                        height=300
+                    )
+                    col4.plotly_chart(fig4, use_container_width=True)
+    
                 # Guardar datos editados en cache
                 save_to_cache(edited_df, 'VPD', 'Misiones')
     
@@ -954,7 +1013,8 @@ def create_consolidado(deseados):
     tipos = ['Misiones', 'Consultorías']
     data = []
     for unidad in unidades:
-        row = {'Unidad Organizacional': unidad}
+        # **Cambio Importante:** Establecer 'Unidad Organizacional' como una tupla
+        row = {('Unidad Organizacional', ''): unidad}
         for tipo in tipos:
             cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
             if os.path.exists(cache_file):
@@ -990,8 +1050,11 @@ def create_consolidado(deseados):
         {'selector': 'th', 'props': [('background-color', '#FFFFFF'), ('color', '#000000'), ('font-weight', 'bold')]},
         {'selector': 'td', 'props': [('text-align', 'right')]},
         {'selector': 'th.col_heading.level0', 'props': [('text-align', 'center')]},
-        {'selector': 'th.col_heading.level1', 'props': [('text-align', 'center')]},
+        {'selector': 'th.col_heading.level1', 'props': [('text-align', 'center')]}
     ])
+    
+    # Ajustar el ancho de las columnas (opcional)
+    styled_df = styled_df.set_properties(**{'width': '120px'})
     
     # Mostrar la tabla estilizada
     st.table(styled_df)

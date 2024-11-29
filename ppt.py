@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from st_aggrid import AgGrid, GridOptionsBuilder, DataReturnMode, JsCode, GridUpdateMode
+from st_aggrid import AgGrid, GridOptionsBuilder, DataReturnMode, JsCode
 import plotly.express as px
 import os  # Importación necesaria para manejar archivos y directorios
 
@@ -116,7 +116,7 @@ def create_consolidado(deseados):
         return color
     
     # Formatear y estilizar la tabla de Misiones
-    styled_misiones_df = consolidado_misiones_df.style.applymap(highlight_zero, subset=["Misiones - Ajuste"])
+    styled_misiones_df = consolidado_misiones_df.style.applymap(highlight_zero, subset=[f"Misiones - Ajuste"])
     styled_misiones_df = styled_misiones_df.format(
         "{:,.0f}", 
         subset=[
@@ -127,7 +127,7 @@ def create_consolidado(deseados):
     )
     
     # Formatear y estilizar la tabla de Consultorías
-    styled_consultorias_df = consolidado_consultorias_df.style.applymap(highlight_zero, subset=["Consultorías - Ajuste"])
+    styled_consultorias_df = consolidado_consultorias_df.style.applymap(highlight_zero, subset=[f"Consultorías - Ajuste"])
     styled_consultorias_df = styled_consultorias_df.format(
         "{:,.0f}", 
         subset=[
@@ -200,35 +200,11 @@ def handle_page(main_page):
                 
                 return df
 
-            # Definir una clave única para el estado de la sesión
-            session_key = "VPO_Misiones_DPP2025"
-
-            # Cargar datos y gestionar el estado de la sesión
             if page == "DPP 2025":
-                if session_key not in st.session_state:
-                    # Cargar datos desde cache si existe
-                    if os.path.exists(cache_file):
-                        df = pd.read_csv(cache_file)
-                    else:
-                        # Cargar datos desde Excel
-                        try:
-                            df = pd.read_excel(file_path, sheet_name=sheet_name)
-                        except FileNotFoundError:
-                            st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                            st.stop()
-                        except Exception as e:
-                            st.error(f"Error al leer el archivo Excel: {e}")
-                            st.stop()
-                        
-                        # Procesar datos
-                        df = process_vpo_misiones_df(df, sheet_name)
-                    
-                    # Asignar al estado de la sesión
-                    st.session_state[session_key] = df
+                # Cargar datos desde cache si existe
+                if os.path.exists(cache_file):
+                    df = pd.read_csv(cache_file)
                 else:
-                    df = st.session_state[session_key]
-            else:
-                if session_key not in st.session_state:
                     # Cargar datos desde Excel
                     try:
                         df = pd.read_excel(file_path, sheet_name=sheet_name)
@@ -241,11 +217,19 @@ def handle_page(main_page):
                     
                     # Procesar datos
                     df = process_vpo_misiones_df(df, sheet_name)
-                    
-                    # Asignar al estado de la sesión
-                    st.session_state[session_key] = df
-                else:
-                    df = st.session_state[session_key]
+            else:
+                # Cargar datos desde Excel
+                try:
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+                except FileNotFoundError:
+                    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
+                    st.stop()
+                except Exception as e:
+                    st.error(f"Error al leer el archivo Excel: {e}")
+                    st.stop()
+                
+                # Procesar datos
+                df = process_vpo_misiones_df(df, sheet_name)
             
             # Definir paleta de colores para Objetivo
             objetivo_color_map = {
@@ -382,8 +366,8 @@ def handle_page(main_page):
                 grid_response = AgGrid(
                     df,
                     gridOptions=grid_options,
-                    data_return_mode=DataReturnMode.AS_INPUT,
-                    update_mode=GridUpdateMode.VALUE_CHANGED,
+                    data_return_mode=DataReturnMode.FILTERED,
+                    update_mode='MODEL_CHANGED',
                     fit_columns_on_grid_load=False,
                     height=400,
                     width='100%',
@@ -393,19 +377,13 @@ def handle_page(main_page):
                 )
                 
                 # Obtener datos editados
-                if grid_response['data'] is not None:
-                    edited_df = pd.DataFrame(grid_response['data'])
-                    # Actualizar el estado de la sesión con los datos editados
-                    st.session_state[session_key] = edited_df
-                    df = edited_df
-                else:
-                    df = st.session_state[session_key]
+                edited_df = pd.DataFrame(grid_response['data'])
                 
                 # Verificar columnas esenciales
                 essential_cols = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
                                   'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Objetivo', 'Total']
                 for col in essential_cols:
-                    if col not in df.columns:
+                    if col not in edited_df.columns:
                         st.error(f"La columna '{col}' está ausente en los datos editados.")
                         st.stop()
                 
@@ -413,17 +391,17 @@ def handle_page(main_page):
                 numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
                                    'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
                 for col in numeric_columns:
-                    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+                    edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
                 
                 # Verificar valores en 'Objetivo'
-                if 'Objetivo' in df.columns and not df['Objetivo'].dropna().isin(['R', 'E']).all():
+                if 'Objetivo' in edited_df.columns and not edited_df['Objetivo'].dropna().isin(['R', 'E']).all():
                     st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de Objetivo.")
                 
                 # Recalcular 'Total' si es necesario
-                df['Total'] = df.apply(calculate_total_misiones, axis=1)
+                edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
                 
                 # Calcular métricas sin decimales
-                total_sum = df['Total'].sum()
+                total_sum = edited_df['Total'].sum()
                 difference = desired_total - total_sum
                 
                 # Mostrar métricas sin decimales
@@ -432,9 +410,9 @@ def handle_page(main_page):
                 col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
                 
                 # Resumen por País y Objetivo
-                summary_country = df.groupby('País')['Total'].sum().reset_index()
-                if 'Objetivo' in df.columns:
-                    summary_obj = df[df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
+                summary_country = edited_df.groupby('País')['Total'].sum().reset_index()
+                if 'Objetivo' in edited_df.columns:
+                    summary_obj = edited_df[edited_df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
                 else:
                     summary_obj = pd.DataFrame(columns=['Objetivo', 'Total'])
                 
@@ -491,14 +469,14 @@ def handle_page(main_page):
                     col4.plotly_chart(fig4, use_container_width=True)
                 
                 # Guardar datos editados en cache
-                save_to_cache(df, 'VPO', 'Misiones')
+                save_to_cache(edited_df, 'VPO', 'Misiones')
                 
                 # Descargar tabla modificada sin decimales
                 st.subheader("Descargar Tabla Modificada - Misiones VPO")
-                df['Total'] = df['Total'].round(0)
-                csv = df.to_csv(index=False).encode('utf-8')
+                edited_df['Total'] = edited_df['Total'].round(0)
+                csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_misiones_vpo.csv", mime="text/csv")
-
+        
         elif view == "Consultorías":
             page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPO_Consultorias_page")
             file_path = 'BDD_Ajuste.xlsx'
@@ -530,35 +508,11 @@ def handle_page(main_page):
                 
                 return df
 
-            # Definir una clave única para el estado de la sesión
-            session_key = "VPO_Consultorias_DPP2025"
-
-            # Cargar datos y gestionar el estado de la sesión
             if page == "DPP 2025":
-                if session_key not in st.session_state:
-                    # Cargar datos desde cache si existe
-                    if os.path.exists(cache_file):
-                        df = pd.read_csv(cache_file)
-                    else:
-                        # Cargar datos desde Excel
-                        try:
-                            df = pd.read_excel(file_path, sheet_name=sheet_name)
-                        except FileNotFoundError:
-                            st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                            st.stop()
-                        except Exception as e:
-                            st.error(f"Error al leer el archivo Excel: {e}")
-                            st.stop()
-                        
-                        # Procesar datos
-                        df = process_vpo_consultorias_df(df, sheet_name)
-                    
-                    # Asignar al estado de la sesión
-                    st.session_state[session_key] = df
+                # Cargar datos desde cache si existe
+                if os.path.exists(cache_file):
+                    df = pd.read_csv(cache_file)
                 else:
-                    df = st.session_state[session_key]
-            else:
-                if session_key not in st.session_state:
                     # Cargar datos desde Excel
                     try:
                         df = pd.read_excel(file_path, sheet_name=sheet_name)
@@ -571,11 +525,19 @@ def handle_page(main_page):
                     
                     # Procesar datos
                     df = process_vpo_consultorias_df(df, sheet_name)
-                    
-                    # Asignar al estado de la sesión
-                    st.session_state[session_key] = df
-                else:
-                    df = st.session_state[session_key]
+            else:
+                # Cargar datos desde Excel
+                try:
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+                except FileNotFoundError:
+                    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
+                    st.stop()
+                except Exception as e:
+                    st.error(f"Error al leer el archivo Excel: {e}")
+                    st.stop()
+                
+                # Procesar datos
+                df = process_vpo_consultorias_df(df, sheet_name)
             
             # Página Requerimiento del área para Consultorías VPO
             if page == "Requerimiento del área":
@@ -631,8 +593,8 @@ def handle_page(main_page):
                 grid_response = AgGrid(
                     df,
                     gridOptions=grid_options,
-                    data_return_mode=DataReturnMode.AS_INPUT,
-                    update_mode=GridUpdateMode.VALUE_CHANGED,
+                    data_return_mode=DataReturnMode.FILTERED,
+                    update_mode='MODEL_CHANGED',
                     fit_columns_on_grid_load=False,
                     height=400,
                     width='100%',
@@ -642,31 +604,25 @@ def handle_page(main_page):
                 )
                 
                 # Obtener datos editados
-                if grid_response['data'] is not None:
-                    edited_df = pd.DataFrame(grid_response['data'])
-                    # Actualizar el estado de la sesión con los datos editados
-                    st.session_state[session_key] = edited_df
-                    df = edited_df
-                else:
-                    df = st.session_state[session_key]
+                edited_df = pd.DataFrame(grid_response['data'])
                 
                 # Verificar columnas esenciales
                 essential_cols = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
                 for col in essential_cols:
-                    if col not in df.columns:
+                    if col not in edited_df.columns:
                         st.error(f"La columna '{col}' está ausente en los datos editados.")
                         st.stop()
                 
                 # Limpiar y convertir columnas numéricas
                 numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
                 for col in numeric_columns:
-                    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+                    edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
                 
                 # Recalcular 'Total'
-                df['Total'] = df.apply(calculate_total_consultorias, axis=1)
+                edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
                 
                 # Calcular métricas sin decimales
-                total_sum = df['Total'].sum()
+                total_sum = edited_df['Total'].sum()
                 difference = desired_total - total_sum
                 
                 # Mostrar métricas sin decimales
@@ -675,12 +631,12 @@ def handle_page(main_page):
                 col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
                 
                 # Guardar datos editados en cache
-                save_to_cache(df, 'VPO', 'Consultorías')
+                save_to_cache(edited_df, 'VPO', 'Consultorías')
                 
                 # Descargar tabla modificada sin decimales
                 st.subheader("Descargar Tabla Modificada - Consultorías VPO")
-                df['Total'] = df['Total'].round(0)
-                csv = df.to_csv(index=False).encode('utf-8')
+                edited_df['Total'] = edited_df['Total'].round(0)
+                csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_consultorias_vpo.csv", mime="text/csv")
 
     elif main_page == "VPD":
@@ -720,35 +676,11 @@ def handle_page(main_page):
                 
                 return df
 
-            # Definir una clave única para el estado de la sesión
-            session_key = "VPD_Misiones_DPP2025"
-
-            # Cargar datos y gestionar el estado de la sesión
             if page == "DPP 2025":
-                if session_key not in st.session_state:
-                    # Cargar datos desde cache si existe
-                    if os.path.exists(cache_file):
-                        df = pd.read_csv(cache_file)
-                    else:
-                        # Cargar datos desde Excel
-                        try:
-                            df = pd.read_excel(file_path, sheet_name=sheet_name)
-                        except FileNotFoundError:
-                            st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                            st.stop()
-                        except Exception as e:
-                            st.error(f"Error al leer el archivo Excel: {e}")
-                            st.stop()
-                        
-                        # Procesar datos
-                        df = process_vpd_misiones_df(df, sheet_name)
-                    
-                    # Asignar al estado de la sesión
-                    st.session_state[session_key] = df
+                # Cargar datos desde cache si existe
+                if os.path.exists(cache_file):
+                    df = pd.read_csv(cache_file)
                 else:
-                    df = st.session_state[session_key]
-            else:
-                if session_key not in st.session_state:
                     # Cargar datos desde Excel
                     try:
                         df = pd.read_excel(file_path, sheet_name=sheet_name)
@@ -761,11 +693,19 @@ def handle_page(main_page):
                     
                     # Procesar datos
                     df = process_vpd_misiones_df(df, sheet_name)
-                    
-                    # Asignar al estado de la sesión
-                    st.session_state[session_key] = df
-                else:
-                    df = st.session_state[session_key]
+            else:
+                # Cargar datos desde Excel
+                try:
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+                except FileNotFoundError:
+                    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
+                    st.stop()
+                except Exception as e:
+                    st.error(f"Error al leer el archivo Excel: {e}")
+                    st.stop()
+                
+                # Procesar datos
+                df = process_vpd_misiones_df(df, sheet_name)
             
             # Página Requerimiento del área para Misiones VPD
             if page == "Requerimiento del área":
@@ -830,8 +770,8 @@ def handle_page(main_page):
                 grid_response = AgGrid(
                     df,
                     gridOptions=grid_options,
-                    data_return_mode=DataReturnMode.AS_INPUT,
-                    update_mode=GridUpdateMode.VALUE_CHANGED,
+                    data_return_mode=DataReturnMode.FILTERED,
+                    update_mode='MODEL_CHANGED',
                     fit_columns_on_grid_load=False,
                     height=400,
                     width='100%',
@@ -841,19 +781,13 @@ def handle_page(main_page):
                 )
     
                 # Obtener datos editados
-                if grid_response['data'] is not None:
-                    edited_df = pd.DataFrame(grid_response['data'])
-                    # Actualizar el estado de la sesión con los datos editados
-                    st.session_state[session_key] = edited_df
-                    df = edited_df
-                else:
-                    df = st.session_state[session_key]
+                edited_df = pd.DataFrame(grid_response['data'])
     
                 # Verificar columnas esenciales
                 essential_cols = ['País', 'Operación', 'VPD/AREA', 'Cantidad de Funcionarios', 'Días', 
                                   'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
                 for col in essential_cols:
-                    if col not in df.columns:
+                    if col not in edited_df.columns:
                         st.error(f"La columna '{col}' está ausente en los datos editados.")
                         st.stop()
     
@@ -861,13 +795,13 @@ def handle_page(main_page):
                 numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
                                    'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
                 for col in numeric_columns:
-                    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+                    edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
     
                 # Recalcular 'Total'
-                df['Total'] = df.apply(calculate_total_misiones, axis=1)
+                edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
     
                 # Calcular métricas sin decimales
-                total_sum = df['Total'].sum()
+                total_sum = edited_df['Total'].sum()
                 difference = desired_total - total_sum
     
                 # Mostrar métricas sin decimales
@@ -876,12 +810,12 @@ def handle_page(main_page):
                 col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
     
                 # Guardar datos editados en cache
-                save_to_cache(df, 'VPD', 'Misiones')
+                save_to_cache(edited_df, 'VPD', 'Misiones')
     
                 # Descargar tabla modificada sin decimales
                 st.subheader("Descargar Tabla Modificada - Misiones VPD")
-                df['Total'] = df['Total'].round(0)
-                csv = df.to_csv(index=False).encode('utf-8')
+                edited_df['Total'] = edited_df['Total'].round(0)
+                csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_misiones_vpd.csv", mime="text/csv")
         
         elif view == "Consultorías":
@@ -915,35 +849,11 @@ def handle_page(main_page):
                 
                 return df
 
-            # Definir una clave única para el estado de la sesión
-            session_key = "VPD_Consultorias_DPP2025"
-
-            # Cargar datos y gestionar el estado de la sesión
             if page == "DPP 2025":
-                if session_key not in st.session_state:
-                    # Cargar datos desde cache si existe
-                    if os.path.exists(cache_file):
-                        df = pd.read_csv(cache_file)
-                    else:
-                        # Cargar datos desde Excel
-                        try:
-                            df = pd.read_excel(file_path, sheet_name=sheet_name)
-                        except FileNotFoundError:
-                            st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                            st.stop()
-                        except Exception as e:
-                            st.error(f"Error al leer el archivo Excel: {e}")
-                            st.stop()
-                        
-                        # Procesar datos
-                        df = process_vpd_consultorias_df(df, sheet_name)
-                    
-                    # Asignar al estado de la sesión
-                    st.session_state[session_key] = df
+                # Cargar datos desde cache si existe
+                if os.path.exists(cache_file):
+                    df = pd.read_csv(cache_file)
                 else:
-                    df = st.session_state[session_key]
-            else:
-                if session_key not in st.session_state:
                     # Cargar datos desde Excel
                     try:
                         df = pd.read_excel(file_path, sheet_name=sheet_name)
@@ -956,11 +866,19 @@ def handle_page(main_page):
                     
                     # Procesar datos
                     df = process_vpd_consultorias_df(df, sheet_name)
-                    
-                    # Asignar al estado de la sesión
-                    st.session_state[session_key] = df
-                else:
-                    df = st.session_state[session_key]
+            else:
+                # Cargar datos desde Excel
+                try:
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+                except FileNotFoundError:
+                    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
+                    st.stop()
+                except Exception as e:
+                    st.error(f"Error al leer el archivo Excel: {e}")
+                    st.stop()
+                
+                # Procesar datos
+                df = process_vpd_consultorias_df(df, sheet_name)
             
             # Definir paleta de colores para VPD/AREA
             vpd_area_unique = df['VPD/AREA'].unique()
@@ -1051,8 +969,8 @@ def handle_page(main_page):
                 grid_response = AgGrid(
                     df,
                     gridOptions=grid_options,
-                    data_return_mode=DataReturnMode.AS_INPUT,
-                    update_mode=GridUpdateMode.VALUE_CHANGED,
+                    data_return_mode=DataReturnMode.FILTERED,
+                    update_mode='MODEL_CHANGED',
                     fit_columns_on_grid_load=False,
                     height=400,
                     width='100%',
@@ -1062,31 +980,25 @@ def handle_page(main_page):
                 )
     
                 # Obtener datos editados
-                if grid_response['data'] is not None:
-                    edited_df = pd.DataFrame(grid_response['data'])
-                    # Actualizar el estado de la sesión con los datos editados
-                    st.session_state[session_key] = edited_df
-                    df = edited_df
-                else:
-                    df = st.session_state[session_key]
+                edited_df = pd.DataFrame(grid_response['data'])
     
                 # Verificar columnas esenciales
                 essential_cols = ['Cargo', 'VPD/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
                 for col in essential_cols:
-                    if col not in df.columns:
+                    if col not in edited_df.columns:
                         st.error(f"La columna '{col}' está ausente en los datos editados.")
                         st.stop()
     
                 # Limpiar y convertir columnas numéricas
                 numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
                 for col in numeric_columns:
-                    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+                    edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
     
                 # Recalcular 'Total'
-                df['Total'] = df.apply(calculate_total_consultorias, axis=1)
+                edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
     
                 # Calcular métricas sin decimales
-                total_sum = df['Total'].sum()
+                total_sum = edited_df['Total'].sum()
                 difference = desired_total - total_sum
     
                 # Mostrar métricas sin decimales
@@ -1095,12 +1007,12 @@ def handle_page(main_page):
                 col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
     
                 # Guardar datos editados en cache
-                save_to_cache(df, 'VPD', 'Consultorías')
+                save_to_cache(edited_df, 'VPD', 'Consultorías')
     
                 # Mostrar tabla completa sin decimales
                 st.subheader("Tabla Completa - Consultorías VPD")
                 st.dataframe(
-                    df.style.format({
+                    edited_df.style.format({
                         "Nº": "{:.0f}",
                         "Monto mensual": "{:,.0f}",
                         "cantidad meses": "{:.0f}",
@@ -1111,10 +1023,10 @@ def handle_page(main_page):
     
                 # Descargar tabla modificada sin decimales
                 st.subheader("Descargar Tabla Modificada - Consultorías VPD")
-                df['Total'] = df['Total'].round(0)
-                csv = df.to_csv(index=False).encode('utf-8')
+                edited_df['Total'] = edited_df['Total'].round(0)
+                csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_consultorias_vpd.csv", mime="text/csv")
-
+    
     elif main_page == "Consolidado":
         create_consolidado(deseados)
 

@@ -36,12 +36,6 @@ st.markdown("""
     .stDataFrame div, .stDataFrame th, .stDataFrame td {
         text-align: right;
     }
-    /* Estilos para las tablas */
-    .ag-header-cell {
-        background-color: #FFFFFF !important;
-        color: #000000 !important;
-        font-weight: bold !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -717,65 +711,6 @@ def handle_page(main_page):
                 col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
                 col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
     
-                # Resumen por País y Objetivo
-                summary_country = edited_df.groupby('País')['Total'].sum().reset_index()
-                if 'Objetivo' in edited_df.columns:
-                    summary_obj = edited_df[edited_df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
-                else:
-                    summary_obj = pd.DataFrame(columns=['Objetivo', 'Total'])
-    
-                # Crear gráficos de dona actualizados
-                col3, col4 = st.columns(2)
-    
-                # Gráfico de Dona: Montos Totales por País (Actualizado)
-                fig3 = px.pie(
-                    summary_country,
-                    names='País',
-                    values='Total',
-                    hole=0.4,
-                    title="Montos Totales por País (Actualizado)",
-                    color='País',
-                    color_discrete_map=pais_color_map
-                )
-                fig3.update_layout(
-                    showlegend=True,
-                    legend=dict(
-                        orientation="v",
-                        yanchor="top",
-                        y=1,
-                        xanchor="left",
-                        x=-0.1
-                    ),
-                    margin=dict(t=60, b=20, l=150, r=20),
-                    height=300
-                )
-                col3.plotly_chart(fig3, use_container_width=True)
-    
-                # Gráfico de Dona: Distribución por Objetivo R y E (Actualizado)
-                if not summary_obj.empty:
-                    fig4 = px.pie(
-                        summary_obj,
-                        names='Objetivo',
-                        values='Total',
-                        hole=0.4,
-                        title="Distribución por Objetivo R y E (Actualizado)",
-                        color='Objetivo',
-                        color_discrete_map=objetivo_color_map
-                    )
-                    fig4.update_layout(
-                        showlegend=True,
-                        legend=dict(
-                            orientation="v",
-                            yanchor="top",
-                            y=1,
-                            xanchor="left",
-                            x=-0.1
-                        ),
-                        margin=dict(t=60, b=20, l=150, r=20),
-                        height=300
-                    )
-                    col4.plotly_chart(fig4, use_container_width=True)
-    
                 # Guardar datos editados en cache
                 save_to_cache(edited_df, 'VPD', 'Misiones')
     
@@ -1005,7 +940,7 @@ def save_to_cache(df, unidad, tipo):
     cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
     df.to_csv(cache_file, index=False)
 
-# Función para crear el consolidado con MultiIndex en columnas
+# Función para crear el consolidado
 def create_consolidado(deseados):
     st.header("Consolidado")
     cache_dir = 'cache'
@@ -1013,8 +948,7 @@ def create_consolidado(deseados):
     tipos = ['Misiones', 'Consultorías']
     data = []
     for unidad in unidades:
-        # **Cambio Importante:** Establecer 'Unidad Organizacional' como una tupla
-        row = {('Unidad Organizacional', ''): unidad}
+        row = {'Unidad Organizacional': unidad}
         for tipo in tipos:
             cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
             if os.path.exists(cache_file):
@@ -1022,42 +956,28 @@ def create_consolidado(deseados):
                 actual = df['Total'].sum()
                 deseado = deseados[unidad][tipo]
                 ajuste = deseado - actual
-                row[(tipo, 'Actual')] = actual
-                row[(tipo, 'Ajuste')] = ajuste
-                row[(tipo, 'Deseado')] = deseado
+                row[f"{tipo} - Actual"] = actual
+                row[f"{tipo} - Ajuste"] = ajuste
+                row[f"{tipo} - Deseado"] = deseado
             else:
                 # Si no hay datos, asumimos que el actual es 0
                 deseado = deseados[unidad][tipo]
-                row[(tipo, 'Actual')] = 0
-                row[(tipo, 'Ajuste')] = deseado
-                row[(tipo, 'Deseado')] = deseado
+                row[f"{tipo} - Actual"] = 0
+                row[f"{tipo} - Ajuste"] = deseado
+                row[f"{tipo} - Deseado"] = deseado
         data.append(row)
-    # Crear DataFrame con MultiIndex en columnas
     consolidado_df = pd.DataFrame(data)
-    # Establecer MultiIndex en las columnas
-    consolidado_df.columns = pd.MultiIndex.from_tuples(consolidado_df.columns)
-    consolidado_df.set_index(('Unidad Organizacional', ''), inplace=True)
     
     # Aplicar formato y estilo
     def highlight_zero(val):
         color = 'background-color: #90ee90' if val == 0 else ''
         return color
-
-    # Aplicar formateo condicional y estilos
-    styled_df = consolidado_df.style.applymap(highlight_zero, subset=pd.IndexSlice[:, ['Ajuste']])
-    styled_df = styled_df.format("{:,.0f}", na_rep="", subset=pd.IndexSlice[:, ['Actual', 'Ajuste', 'Deseado']])
-    styled_df = styled_df.set_table_styles([
-        {'selector': 'th', 'props': [('background-color', '#FFFFFF'), ('color', '#000000'), ('font-weight', 'bold')]},
-        {'selector': 'td', 'props': [('text-align', 'right')]},
-        {'selector': 'th.col_heading.level0', 'props': [('text-align', 'center')]},
-        {'selector': 'th.col_heading.level1', 'props': [('text-align', 'center')]}
-    ])
     
-    # Ajustar el ancho de las columnas (opcional)
-    styled_df = styled_df.set_properties(**{'width': '120px'})
+    # Aplicar formateo condicional
+    styled_df = consolidado_df.style.applymap(highlight_zero, subset=[f"{tipo} - Ajuste" for tipo in tipos])
+    styled_df = styled_df.format("{:,.0f}", subset=[f"{tipo} - Actual" for tipo in tipos] + [f"{tipo} - Ajuste" for tipo in tipos] + [f"{tipo} - Deseado" for tipo in tipos])
     
-    # Mostrar la tabla estilizada
-    st.table(styled_df)
+    st.dataframe(styled_df)
 
 # Ejecutar la función según la selección
 handle_page(main_page)

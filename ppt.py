@@ -81,13 +81,13 @@ def create_consolidado(deseados):
             ajuste = deseado - actual
             row_misiones[f"{tipo} - Actual"] = actual
             row_misiones[f"{tipo} - Ajuste"] = ajuste
-            row_misiones[f"{tipo} - Deseado"] = deseado
+            row_misiones[f"{tipo} - DPP-2025"] = deseado
         else:
             # Si no hay datos, asumimos que el actual es 0
             deseado = deseados[unidad][tipo]
             row_misiones[f"{tipo} - Actual"] = 0
             row_misiones[f"{tipo} - Ajuste"] = deseado
-            row_misiones[f"{tipo} - Deseado"] = deseado
+            row_misiones[f"{tipo} - DPP-2025"] = deseado
         data_misiones.append(row_misiones)
 
         # Datos para Consultorías

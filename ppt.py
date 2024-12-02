@@ -186,7 +186,7 @@ def handle_page(main_page):
     deseados = {
         "VPO": {
             "Misiones": 434707.0,
-            "Consultorías": 150000.0
+            "Consultorías": 547700.0
         },
         "VPD": {
             "Misiones": 168000.0,

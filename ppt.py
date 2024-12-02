@@ -7,6 +7,9 @@ import os  # Importación necesaria para manejar archivos y directorios
 # Definir las contraseñas directamente en el código
 VPO_PASSWORD = "contraseña_vpo"  # Reemplaza con tu contraseña para VPO
 VPD_PASSWORD = "contraseña_vpd"  # Reemplaza con tu contraseña para VPD
+VPE_PASSWORD = "contraseña_vpe"  # Reemplaza con tu contraseña para VPE
+VPF_PASSWORD = "contraseña_vpf"  # Reemplaza con tu contraseña para VPF
+PRE_PASSWORD = "contraseña_pre"  # Reemplaza con tu contraseña para PRE
 
 # Función para calcular el total para Misiones VPO y VPD
 def calculate_total_misiones(row):
@@ -45,7 +48,7 @@ st.markdown("""
 
 # Sidebar para selección de página principal, vista y subpágina
 st.sidebar.title("Navegación")
-main_page = st.sidebar.selectbox("Selecciona una página principal:", ("VPO", "VPD", "Consolidado"))
+main_page = st.sidebar.selectbox("Selecciona una página principal:", ("VPO", "VPD", "VPE", "VPF", "PRE", "Consolidado"))
 
 # Título dinámico de la aplicación
 st.title(main_page)
@@ -62,7 +65,7 @@ def save_to_cache(df, unidad, tipo):
 def create_consolidado(deseados):
     st.header("")
     cache_dir = 'cache'
-    unidades = ['VPO', 'VPD']
+    unidades = ['VPO', 'VPD', 'VPE', 'VPF', 'PRE']  # Añadido VPE, VPF, PRE
     tipos = ['Misiones', 'Consultorías']
 
     # Inicializar listas para almacenar los datos de Misiones y Consultorías
@@ -70,45 +73,27 @@ def create_consolidado(deseados):
     data_consultorias = []
 
     for unidad in unidades:
-        # Datos para Misiones
-        row_misiones = {'Unidad Organizacional': unidad}
-        tipo = 'Misiones'
-        cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
-        if os.path.exists(cache_file):
-            df = pd.read_csv(cache_file)
-            actual = df['Total'].sum()
-            deseado = deseados[unidad][tipo]
-            ajuste = deseado - actual
-            row_misiones[f"{tipo} - Actual"] = actual
-            row_misiones[f"{tipo} - Ajuste"] = ajuste
-            row_misiones[f"{tipo} - Deseado"] = deseado
-        else:
-            # Si no hay datos, asumimos que el actual es 0
-            deseado = deseados[unidad][tipo]
-            row_misiones[f"{tipo} - Actual"] = 0
-            row_misiones[f"{tipo} - Ajuste"] = deseado
-            row_misiones[f"{tipo} - Deseado"] = deseado
-        data_misiones.append(row_misiones)
-
-        # Datos para Consultorías
-        row_consultorias = {'Unidad Organizacional': unidad}
-        tipo = 'Consultorías'
-        cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
-        if os.path.exists(cache_file):
-            df = pd.read_csv(cache_file)
-            actual = df['Total'].sum()
-            deseado = deseados[unidad][tipo]
-            ajuste = deseado - actual
-            row_consultorias[f"{tipo} - Actual"] = actual
-            row_consultorias[f"{tipo} - Ajuste"] = ajuste
-            row_consultorias[f"{tipo} - Deseado"] = deseado
-        else:
-            # Si no hay datos, asumimos que el actual es 0
-            deseado = deseados[unidad][tipo]
-            row_consultorias[f"{tipo} - Actual"] = 0
-            row_consultorias[f"{tipo} - Ajuste"] = deseado
-            row_consultorias[f"{tipo} - Deseado"] = deseado
-        data_consultorias.append(row_consultorias)
+        for tipo in tipos:
+            row = {'Unidad Organizacional': unidad}
+            cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
+            if os.path.exists(cache_file):
+                df = pd.read_csv(cache_file)
+                actual = df['Total'].sum()
+                deseado = deseados[unidad][tipo]
+                ajuste = deseado - actual
+                row[f"{tipo} - Actual"] = actual
+                row[f"{tipo} - Ajuste"] = ajuste
+                row[f"{tipo} - Deseado"] = deseado
+            else:
+                # Si no hay datos, asumimos que el actual es 0
+                deseado = deseados[unidad][tipo]
+                row[f"{tipo} - Actual"] = 0
+                row[f"{tipo} - Ajuste"] = deseado
+                row[f"{tipo} - Deseado"] = deseado
+            if tipo == 'Misiones':
+                data_misiones.append(row)
+            else:
+                data_consultorias.append(row)
 
     # Crear DataFrames separados
     consolidado_misiones_df = pd.DataFrame(data_misiones)
@@ -180,6 +165,15 @@ if 'authenticated_vpo' not in st.session_state:
 if 'authenticated_vpd' not in st.session_state:
     st.session_state['authenticated_vpd'] = False
 
+if 'authenticated_vpe' not in st.session_state:
+    st.session_state['authenticated_vpe'] = False
+
+if 'authenticated_vpf' not in st.session_state:
+    st.session_state['authenticated_vpf'] = False
+
+if 'authenticated_pre' not in st.session_state:
+    st.session_state['authenticated_pre'] = False
+
 # Función para manejar cada página principal
 def handle_page(main_page):
     # Definir los montos deseados para cada sección
@@ -191,6 +185,18 @@ def handle_page(main_page):
         "VPD": {
             "Misiones": 168000.0,
             "Consultorías": 130000.0
+        },
+        "VPE": {  # Definir montos deseados para VPE
+            "Misiones": 0.0,         # Reemplaza con los valores reales
+            "Consultorías": 0.0      # Reemplaza con los valores reales
+        },
+        "VPF": {  # Definir montos deseados para VPF
+            "Misiones": 0.0,         # Reemplaza con los valores reales
+            "Consultorías": 0.0      # Reemplaza con los valores reales
+        },
+        "PRE": {  # Definir montos deseados para PRE
+            "Misiones": 0.0,         # Reemplaza con los valores reales
+            "Consultorías": 0.0      # Reemplaza con los valores reales
         }
     }
 
@@ -204,6 +210,18 @@ def handle_page(main_page):
             auth_key = 'authenticated_vpd'
             password = st.sidebar.text_input("Contraseña para VPD", type="password", key="vpd_password")
             correct_password = VPD_PASSWORD
+        elif unidad == "VPE":
+            auth_key = 'authenticated_vpe'
+            password = st.sidebar.text_input("Contraseña para VPE", type="password", key="vpe_password")
+            correct_password = VPE_PASSWORD
+        elif unidad == "VPF":
+            auth_key = 'authenticated_vpf'
+            password = st.sidebar.text_input("Contraseña para VPF", type="password", key="vpf_password")
+            correct_password = VPF_PASSWORD
+        elif unidad == "PRE":
+            auth_key = 'authenticated_pre'
+            password = st.sidebar.text_input("Contraseña para PRE", type="password", key="pre_password")
+            correct_password = PRE_PASSWORD
         else:
             return False
 
@@ -214,15 +232,16 @@ def handle_page(main_page):
             else:
                 st.sidebar.error("Contraseña incorrecta")
 
-    # Autenticación para VPO y VPD
-    if main_page in ["VPO", "VPD"]:
-        auth_key = 'authenticated_vpo' if main_page == "VPO" else 'authenticated_vpd'
+    # Autenticación para VPO, VPD, VPE, VPF y PRE
+    if main_page in ["VPO", "VPD", "VPE", "VPF", "PRE"]:
+        auth_key = f'authenticated_{main_page.lower()}'
         if not st.session_state[auth_key]:
             authenticate(main_page)
             if not st.session_state[auth_key]:
-                st.warning("Ingresa la contraseña para acceder a esta sección.")
+                st.warning(f"Ingresa la contraseña para acceder a la sección {main_page}.")
                 st.stop()  # Detiene la ejecución hasta que el usuario se autentique
 
+    # Manejo de cada página principal
     if main_page == "VPO":
         # Seleccionar Vista: Misiones o Consultorías
         view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPO_view")
@@ -802,8 +821,8 @@ def handle_page(main_page):
                 edited_df = pd.DataFrame(grid_response['data'])
 
                 # Verificar columnas esenciales
-                essential_cols = ['País', 'Operación', 'VPD/AREA', 'Cantidad de Funcionarios', 'Días', 
-                                  'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
+                essential_cols = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                                  'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Objetivo', 'Total']
                 for col in essential_cols:
                     if col not in edited_df.columns:
                         st.error(f"La columna '{col}' está ausente en los datos editados.")
@@ -814,6 +833,10 @@ def handle_page(main_page):
                                    'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
                 for col in numeric_columns:
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+
+                # Verificar valores en 'Objetivo'
+                if 'Objetivo' in edited_df.columns and not edited_df['Objetivo'].dropna().isin(['R', 'E']).all():
+                    st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de Objetivo.")
 
                 # Recalcular 'Total' si es necesario
                 edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
@@ -827,6 +850,40 @@ def handle_page(main_page):
                 col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
                 col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
 
+                # Resumen por País y Objetivo
+                summary_country = edited_df.groupby('País')['Total'].sum().reset_index()
+                summary_obj = edited_df[edited_df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
+
+                # Crear gráficos de dona actualizados
+                col3, col4 = st.columns(2)
+
+                # Gráfico de Dona: Montos Totales por País (Actualizado)
+                fig3 = crear_dona(
+                    df=summary_country,
+                    nombres='País',
+                    valores='Total',
+                    titulo="Montos Totales por País (Actualizado)",
+                    color_map=pais_color_map,
+                    hole=0.5,        # Aumento del hole para anillo más delgado
+                    height=300,      # Reducción de tamaño del gráfico
+                    margin_l=50      # Ajuste de márgenes
+                )
+                col3.plotly_chart(fig3, use_container_width=True)
+
+                # Gráfico de Dona: Distribución por Objetivo R y E (Actualizado)
+                if not summary_obj.empty:
+                    fig4 = crear_dona(
+                        df=summary_obj,
+                        nombres='Objetivo',
+                        valores='Total',
+                        titulo="Distribución por Objetivo R y E (Actualizado)",
+                        color_map=objetivo_color_map,
+                        hole=0.5,        # Aumento del hole para anillo más delgado
+                        height=300,      # Reducción de tamaño del gráfico
+                        margin_l=50      # Ajuste de márgenes
+                    )
+                    col4.plotly_chart(fig4, use_container_width=True)
+
                 # Guardar datos editados en cache
                 save_to_cache(edited_df, 'VPD', 'Misiones')
 
@@ -836,191 +893,26 @@ def handle_page(main_page):
                 csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_misiones_vpd.csv", mime="text/csv")
 
-        elif view == "Consultorías":
-            page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPD_Consultorias_page")
-            file_path = 'BDD_Ajuste.xlsx'
-            sheet_name = 'Consultores_VPD'
-            cache_file = 'cache/VPD_Consultorías_DPP2025.csv'
-            cache_dir = 'cache'
+    elif main_page == "VPE":
+        # Aquí debes implementar la lógica específica para la página VPE
+        st.header("VPE - Página en Desarrollo")
+        st.write("Aquí puedes agregar las funcionalidades específicas para VPE.")
+        # Ejemplo de estructura similar a VPO y VPD
+        # Puedes replicar el manejo de vistas, subpáginas, autenticación de datos, etc.
 
-            # Función para procesar el DataFrame de VPD Consultorías
-            def process_vpd_consultorias_df(df, sheet_name):
-                # Verificar columnas
-                required_columns = ['Cargo', 'VPD/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
-                for col in required_columns:
-                    if col not in df.columns:
-                        st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
-                        st.stop()
+    elif main_page == "VPF":
+        # Aquí debes implementar la lógica específica para la página VPF
+        st.header("VPF - Página en Desarrollo")
+        st.write("Aquí puedes agregar las funcionalidades específicas para VPF.")
+        # Ejemplo de estructura similar a VPO y VPD
+        # Puedes replicar el manejo de vistas, subpáginas, autenticación de datos, etc.
 
-                # Limpiar y convertir columnas numéricas
-                numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-                for col in numeric_columns:
-                    if col in df.columns:
-                        df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-                    else:
-                        st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
-                        st.stop()
-
-                # Calcular 'Total' si es necesario
-                if 'Total' not in df.columns or df['Total'].sum() == 0:
-                    df['Total'] = df.apply(calculate_total_consultorias, axis=1)
-
-                return df
-
-            if page == "DPP 2025":
-                # Cargar datos desde cache si existe
-                if os.path.exists(cache_file):
-                    df = pd.read_csv(cache_file)
-                else:
-                    # Cargar datos desde Excel
-                    try:
-                        df = pd.read_excel(file_path, sheet_name=sheet_name)
-                    except FileNotFoundError:
-                        st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                        st.stop()
-                    except Exception as e:
-                        st.error(f"Error al leer el archivo Excel: {e}")
-                        st.stop()
-
-                    # Procesar datos
-                    df = process_vpd_consultorias_df(df, sheet_name)
-            else:
-                # Cargar datos desde Excel
-                try:
-                    df = pd.read_excel(file_path, sheet_name=sheet_name)
-                except FileNotFoundError:
-                    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                    st.stop()
-                except Exception as e:
-                    st.error(f"Error al leer el archivo Excel: {e}")
-                    st.stop()
-
-                # Procesar datos
-                df = process_vpd_consultorias_df(df, sheet_name)
-
-            # Definir paleta de colores para VPD/AREA
-            vpd_area_unique = df['VPD/AREA'].unique()
-            # Asignar colores únicos a cada VPD/AREA
-            vpd_area_color_map = {area: px.colors.qualitative.Pastel[i % len(px.colors.qualitative.Pastel)] for i, area in enumerate(vpd_area_unique)}
-
-            # Página Requerimiento del área para Consultorías VPD
-            if page == "Requerimiento del área":
-                st.header("VPD - Consultorías: Requerimiento del área")
-
-                # Resumen por VPD/AREA
-                summary_vpd_area = df.groupby('VPD/AREA')['Total'].sum().reset_index()
-
-                # Crear gráfico de dona por VPD/AREA
-                col1, _ = st.columns(2)
-
-                # Gráfico de Dona: Distribución por VPD/AREA
-                fig1 = crear_dona(
-                    df=summary_vpd_area,
-                    nombres='VPD/AREA',
-                    valores='Total',
-                    titulo="Distribución por VPD/AREA",
-                    color_map=vpd_area_color_map,
-                    hole=0.5,        # Aumento del hole para anillo más delgado
-                    height=300,      # Reducción de tamaño del gráfico
-                    margin_l=50      # Ajuste de márgenes
-                )
-                col1.plotly_chart(fig1, use_container_width=True)
-
-                # Mostrar tabla completa sin decimales
-                st.subheader("Tabla Completa - Consultorías VPD")
-                st.dataframe(
-                    df.style.format({
-                        "Nº": "{:.0f}",
-                        "Monto mensual": "{:,.0f}",
-                        "cantidad meses": "{:.0f}",
-                        "Total": "{:,.0f}"
-                    }),
-                    height=400
-                )
-
-            # Página DPP 2025 para Consultorías VPD
-            elif page == "DPP 2025":
-                st.header("VPD - Consultorías: DPP 2025")
-
-                # Monto Total Deseado
-                desired_total = deseados["VPD"]["Consultorías"]
-                st.subheader(f"Monto Total Deseado: {desired_total:,.0f} USD")
-
-                st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
-
-                # Configuración de AgGrid para edición
-                gb = GridOptionsBuilder.from_dataframe(df)
-                gb.configure_default_column(editable=True, groupable=True)
-
-                # Configurar columnas para mostrar sin decimales
-                numeric_columns_aggrid = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-                for col in numeric_columns_aggrid:
-                    gb.configure_column(
-                        col,
-                        type=['numericColumn'],
-                        valueFormatter="Math.round(x).toLocaleString()"
-                    )
-
-                # Configurar la columna 'Total' para cálculo dinámico sin decimales
-                gb.configure_column('Total', editable=False, valueGetter=JsCode("""
-                    function(params) {
-                        return Math.round(Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses']));
-                    }
-                """))
-
-                # Personalizar apariencia de la tabla
-                gb.configure_grid_options(domLayout='normal')
-                grid_options = gb.build()
-
-                # Mostrar tabla editable
-                grid_response = AgGrid(
-                    df,
-                    gridOptions=grid_options,
-                    data_return_mode=DataReturnMode.FILTERED,
-                    update_mode='MODEL_CHANGED',
-                    fit_columns_on_grid_load=False,
-                    height=400,
-                    width='100%',
-                    enable_enterprise_modules=False,
-                    allow_unsafe_jscode=True,
-                    theme='alpine'
-                )
-
-                # Obtener datos editados
-                edited_df = pd.DataFrame(grid_response['data'])
-
-                # Verificar columnas esenciales
-                essential_cols = ['Cargo', 'VPD/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
-                for col in essential_cols:
-                    if col not in edited_df.columns:
-                        st.error(f"La columna '{col}' está ausente en los datos editados.")
-                        st.stop()
-
-                # Limpiar y convertir columnas numéricas
-                numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-                for col in numeric_columns:
-                    edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-
-                # Recalcular 'Total'
-                edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
-
-                # Calcular métricas sin decimales
-                total_sum = edited_df['Total'].sum()
-                difference = desired_total - total_sum
-
-                # Mostrar métricas sin decimales
-                col1, col2 = st.columns(2)
-                col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
-                col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
-
-                # Guardar datos editados en cache
-                save_to_cache(edited_df, 'VPD', 'Consultorías')
-
-                # Descargar tabla modificada sin decimales
-                st.subheader("Descargar Tabla Modificada - Consultorías VPD")
-                edited_df['Total'] = edited_df['Total'].round(0)
-                csv = edited_df.to_csv(index=False).encode('utf-8')
-                st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_consultorias_vpd.csv", mime="text/csv")
+    elif main_page == "PRE":
+        # Aquí debes implementar la lógica específica para la página PRE
+        st.header("PRE - Página en Desarrollo")
+        st.write("Aquí puedes agregar las funcionalidades específicas para PRE.")
+        # Ejemplo de estructura similar a VPO y VPD
+        # Puedes replicar el manejo de vistas, subpáginas, autenticación de datos, etc.
 
     elif main_page == "Consolidado":
         create_consolidado(deseados)

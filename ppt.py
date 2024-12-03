@@ -64,12 +64,13 @@ def create_consolidado(deseados):
                 ajuste = deseado - actual
                 row[f"{tipo} - Actual"] = actual
                 row[f"{tipo} - DPP2025"] = ajuste
-                row[f"{tipo} - Deseado"] = deseado
+                # Eliminamos la columna "Deseado" del consolidado
+                # row[f"{tipo} - Deseado"] = deseado  # Esta línea se elimina
             else:
                 deseado = deseados[unidad][tipo]
                 row[f"{tipo} - Actual"] = 0
                 row[f"{tipo} - DPP2025"] = deseado
-                row[f"{tipo} - Deseado"] = deseado
+                # row[f"{tipo} - Deseado"] = deseado  # Esta línea se elimina
             if tipo == 'Misiones':
                 data_misiones.append(row)
             else:
@@ -82,23 +83,25 @@ def create_consolidado(deseados):
         color = 'background-color: #90ee90' if val == 0 else ''
         return color
 
-    styled_misiones_df = consolidado_misiones_df.style.applymap(highlight_zero, subset=[f"Misiones - DPP2025"])
+    # Solo incluimos "Actual" y "DPP2025" para Misiones
+    consolidado_misiones_display = consolidado_misiones_df[['Unidad Organizacional', "Misiones - Actual", "Misiones - DPP2025"]]
+    styled_misiones_df = consolidado_misiones_display.style.applymap(highlight_zero, subset=["Misiones - DPP2025"])
     styled_misiones_df = styled_misiones_df.format(
         "{:,.0f}", 
         subset=[
             "Misiones - Actual",
-            "Misiones - DPP2025",
-            "Misiones - Deseado"
+            "Misiones - DPP2025"
         ]
     )
 
-    styled_consultorias_df = consolidado_consultorias_df.style.applymap(highlight_zero, subset=[f"Consultorías - DPP2025"])
+    # Solo incluimos "Actual" y "DPP2025" para Consultorías
+    consolidado_consultorias_display = consolidado_consultorias_df[['Unidad Organizacional', "Consultorías - Actual", "Consultorías - DPP2025"]]
+    styled_consultorias_df = consolidado_consultorias_display.style.applymap(highlight_zero, subset=["Consultorías - DPP2025"])
     styled_consultorias_df = styled_consultorias_df.format(
         "{:,.0f}", 
         subset=[
             "Consultorías - Actual",
-            "Consultorías - DPP2025",
-            "Consultorías - Deseado"
+            "Consultorías - DPP2025"
         ]
     )
 

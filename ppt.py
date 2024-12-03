@@ -172,7 +172,7 @@ def main():
         total_pre_misiones = df_pre_misiones['Total'].sum()
         deseados["PRE"]["Misiones"] = total_pre_misiones
     except Exception as e:
-        st.warning(f"No se pudo leer la hoja 'Misiones_PRE' para establecer el monto deseado de Misiones de PRE: {e}")
+        st.warning(f"No se pudo leer la hoja 'Misiones_PRE' para establecer el monto DPP 2025 de Misiones de PRE: {e}")
         deseados["PRE"]["Misiones"] = 0.0
 
     try:
@@ -181,7 +181,7 @@ def main():
         total_pre_consultorias = df_pre_consultorias['Total'].sum()
         deseados["PRE"]["Consultorías"] = total_pre_consultorias
     except Exception as e:
-        st.warning(f"No se pudo leer la hoja 'Consultores_PRE' para establecer el monto deseado de Consultorías de PRE: {e}")
+        st.warning(f"No se pudo leer la hoja 'Consultores_PRE' para establecer el monto DPP 2025 de Consultorías de PRE: {e}")
         deseados["PRE"]["Consultorías"] = 0.0
 
     # Manejo de cada página principal
@@ -512,8 +512,8 @@ def display_consultorias_requerimiento(df, unit):
 
 def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
     st.header(f"{unit} - Misiones: DPP 2025")
-    st.subheader(f"Monto Total Deseado: {desired_total:,.0f} USD")
-    st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
+    st.subheader(f"Monto DPP 2025: {desired_total:,.0f} USD")
+    st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto DPP 2025.")
 
     gb = GridOptionsBuilder.from_dataframe(df)
     gb.configure_default_column(editable=True, groupable=True)
@@ -639,7 +639,7 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
 
     col1, col2 = st.columns(2)
     col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
-    col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
+    col2.metric("Diferencia con el Monto DPP 2025 (USD)", f"{difference:,.0f}")
 
     save_to_cache(edited_df, unit, tipo)
 
@@ -650,8 +650,8 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
 
 def edit_consultorias_dpp(df, unit, desired_total, tipo):
     st.header(f"{unit} - Consultorías: DPP 2025")
-    st.subheader(f"Monto Total Deseado: {desired_total:,.0f} USD")
-    st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
+    st.subheader(f"Monto DPP 2025: {desired_total:,.0f} USD")
+    st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto DPP 2025.")
 
     gb = GridOptionsBuilder.from_dataframe(df)
     gb.configure_default_column(editable=True, groupable=True)
@@ -786,7 +786,7 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
 
     col1, col2 = st.columns(2)
     col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
-    col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
+    col2.metric("Diferencia con el Monto DPP 2025 (USD)", f"{difference:,.0f}")
 
     save_to_cache(edited_df, unit, tipo)
 

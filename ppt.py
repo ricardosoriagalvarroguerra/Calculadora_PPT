@@ -14,15 +14,13 @@ PRE_PASSWORD = "contraseña_pre"  # Reemplaza con tu contraseña para PRE
 # Función para calcular el total para Misiones VPO y VPD
 def calculate_total_misiones(row):
     return round(
-        (row['Cantidad de Funcionarios'] * row['Costo de Pasaje']) +
-        (row['Cantidad de Funcionarios'] * row['Días'] * row['Alojamiento']) +
-        (row['Cantidad de Funcionarios'] * row['Días'] * row['Per-diem y Otros']) +
-        (row['Cantidad de Funcionarios'] * row['Movilidad'])
+        row['Costo de Pasaje'] * (row['Alojamiento'] + row['Per-diem y Otros'] + row['Movilidad']) * 
+        row['Días'] * row['Cantidad de Funcionarios']
     )
 
 # Función para calcular el total para Consultorías VPO y VPD
 def calculate_total_consultorias(row):
-    return round(row['Nº'] * row['Monto mensual'] * row['cantidad meses'])
+    return round(row['Nº'] * row['Monto mensual'] * 1.6 * row['cantidad meses'])
 
 # Configuración de la página
 st.set_page_config(page_title="Presupuesto", layout="wide")
@@ -191,8 +189,8 @@ def handle_page(main_page):
             "Consultorías": 0.0      # Reemplaza con los valores reales
         },
         "VPF": {  # Definir montos deseados para VPF
-            "Misiones": 0.0,         # Reemplaza con los valores reales
-            "Consultorías": 0.0      # Reemplaza con los valores reales
+            "Misiones": 138600.0,    # Valor real
+            "Consultorías": 170000.0  # Valor real
         },
         "PRE": {  # Definir montos deseados para PRE
             "Misiones": 0.0,         # Reemplaza con los valores reales
@@ -412,10 +410,8 @@ def handle_page(main_page):
                 gb.configure_column('Total', editable=False, valueGetter=JsCode("""
                     function(params) {
                         return Math.round(
-                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Costo de Pasaje']) +
-                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Días']) * Number(params.data['Alojamiento']) +
-                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Días']) * Number(params.data['Per-diem y Otros']) +
-                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Movilidad'])
+                            Number(params.data['Costo de Pasaje']) * (Number(params.data['Alojamiento']) + Number(params.data['Per-diem y Otros']) + Number(params.data['Movilidad'])) * 
+                            Number(params.data['Días']) * Number(params.data['Cantidad de Funcionarios'])
                         );
                     }
                 """))
@@ -514,41 +510,60 @@ def handle_page(main_page):
                 csv = edited_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_misiones_vpo.csv", mime="text/csv")
 
-        elif view == "Consultorías":
-            page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPO_Consultorias_page")
-            file_path = 'BDD_Ajuste.xlsx'
-            sheet_name = 'Consultores_VPO'
-            cache_file = 'cache/VPO_Consultorías_DPP2025.csv'
-            cache_dir = 'cache'
+        elif main_page == "VPD":
+            # Seleccionar Vista: Misiones o Consultorías
+            view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPD_view")
 
-            # Función para procesar el DataFrame de VPO Consultorías
-            def process_vpo_consultorias_df(df, sheet_name):
-                # Verificar columnas
-                required_columns = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
-                for col in required_columns:
-                    if col not in df.columns:
-                        st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
-                        st.stop()
+            if view == "Misiones":
+                page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPD_Misiones_page")
+                file_path = 'BDD_Ajuste.xlsx'
+                sheet_name = 'Misiones_VPD'
+                cache_file = 'cache/VPD_Misiones_DPP2025.csv'
+                cache_dir = 'cache'
 
-                # Limpiar y convertir columnas numéricas
-                numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-                for col in numeric_columns:
-                    if col in df.columns:
-                        df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+                # Función para procesar el DataFrame de VPD Misiones
+                def process_vpd_misiones_df(df, sheet_name):
+                    # Verificar columnas
+                    required_columns = ['País', 'Operación', 'VPD/AREA', 'Cantidad de Funcionarios', 'Días', 
+                                        'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
+                    for col in required_columns:
+                        if col not in df.columns:
+                            st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                            st.stop()
+
+                    # Limpiar y convertir columnas numéricas
+                    numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                                       'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
+                    for col in numeric_columns:
+                        if col in df.columns:
+                            df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+                        else:
+                            st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                            st.stop()
+
+                    # Calcular 'Total' si es necesario
+                    if 'Total' not in df.columns or df['Total'].sum() == 0:
+                        df['Total'] = df.apply(calculate_total_misiones, axis=1)
+
+                    return df
+
+                if page == "DPP 2025":
+                    # Cargar datos desde cache si existe
+                    if os.path.exists(cache_file):
+                        df = pd.read_csv(cache_file)
                     else:
-                        st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
-                        st.stop()
+                        # Cargar datos desde Excel
+                        try:
+                            df = pd.read_excel(file_path, sheet_name=sheet_name)
+                        except FileNotFoundError:
+                            st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
+                            st.stop()
+                        except Exception as e:
+                            st.error(f"Error al leer el archivo Excel: {e}")
+                            st.stop()
 
-                # Calcular 'Total' si es necesario
-                if 'Total' not in df.columns or df['Total'].sum() == 0:
-                    df['Total'] = df.apply(calculate_total_consultorias, axis=1)
-
-                return df
-
-            if page == "DPP 2025":
-                # Cargar datos desde cache si existe
-                if os.path.exists(cache_file):
-                    df = pd.read_csv(cache_file)
+                        # Procesar datos
+                        df = process_vpd_misiones_df(df, sheet_name)
                 else:
                     # Cargar datos desde Excel
                     try:
@@ -561,136 +576,177 @@ def handle_page(main_page):
                         st.stop()
 
                     # Procesar datos
-                    df = process_vpo_consultorias_df(df, sheet_name)
-            else:
-                # Cargar datos desde Excel
-                try:
-                    df = pd.read_excel(file_path, sheet_name=sheet_name)
-                except FileNotFoundError:
-                    st.error(f"No se encontró el archivo '{file_path}'. Asegúrate de que está en el directorio correcto.")
-                    st.stop()
-                except Exception as e:
-                    st.error(f"Error al leer el archivo Excel: {e}")
-                    st.stop()
+                    df = process_vpd_misiones_df(df, sheet_name)
 
-                # Procesar datos
-                df = process_vpo_consultorias_df(df, sheet_name)
+                # Página Requerimiento del área para Misiones VPD
+                if page == "Requerimiento del área":
+                    st.header("VPD - Misiones: Requerimiento del área")
 
-            # Página Requerimiento del área para Consultorías VPO
-            if page == "Requerimiento del área":
-                st.header("VPO - Consultorías: Requerimiento del área")
-
-                # Mostrar tabla completa sin decimales
-                st.subheader("Tabla Completa - Consultorías VPO")
-                st.dataframe(
-                    df.style.format({
-                        "Nº": "{:.0f}",
-                        "Monto mensual": "{:,.0f}",
-                        "cantidad meses": "{:.0f}",
-                        "Total": "{:,.0f}"
-                    }),
-                    height=400
-                )
-
-            # Página DPP 2025 para Consultorías VPO
-            elif page == "DPP 2025":
-                st.header("VPO - Consultorías: DPP 2025")
-
-                # Monto Total Deseado
-                desired_total = deseados["VPO"]["Consultorías"]
-                st.subheader(f"Monto Total Deseado: {desired_total:,.0f} USD")
-
-                st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
-
-                # Configuración de AgGrid para edición
-                gb = GridOptionsBuilder.from_dataframe(df)
-                gb.configure_default_column(editable=True, groupable=True)
-
-                # Configurar columnas para mostrar sin decimales
-                numeric_columns_aggrid = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-                for col in numeric_columns_aggrid:
-                    gb.configure_column(
-                        col,
-                        type=['numericColumn'],
-                        valueFormatter="Math.round(x).toLocaleString()"
+                    # Mostrar tabla completa sin decimales
+                    st.subheader("Tabla Completa - Misiones VPD")
+                    st.dataframe(
+                        df.style.format({
+                            "Cantidad de Funcionarios": "{:.0f}",
+                            "Días": "{:.0f}",
+                            "Costo de Pasaje": "{:,.0f}",
+                            "Alojamiento": "{:,.0f}",
+                            "Per-diem y Otros": "{:,.0f}",
+                            "Movilidad": "{:,.0f}",
+                            "Total": "{:,.0f}"
+                        }),
+                        height=400
                     )
 
-                # Configurar la columna 'Total' para cálculo dinámico sin decimales
-                gb.configure_column('Total', editable=False, valueGetter=JsCode("""
-                    function(params) {
-                        return Math.round(Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses']));
-                    }
-                """))
+                # Página DPP 2025 para Misiones VPD
+                elif page == "DPP 2025":
+                    st.header("VPD - Misiones: DPP 2025")
 
-                # Personalizar apariencia de la tabla
-                gb.configure_grid_options(domLayout='normal')
-                grid_options = gb.build()
+                    # Monto Total Deseado
+                    desired_total = deseados["VPD"]["Misiones"]
+                    st.subheader(f"Monto Total Deseado: {desired_total:,.0f} USD")
 
-                # Mostrar tabla editable
-                grid_response = AgGrid(
-                    df,
-                    gridOptions=grid_options,
-                    data_return_mode=DataReturnMode.FILTERED,
-                    update_mode='MODEL_CHANGED',
-                    fit_columns_on_grid_load=False,
-                    height=400,
-                    width='100%',
-                    enable_enterprise_modules=False,
-                    allow_unsafe_jscode=True,
-                    theme='alpine'
-                )
+                    st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
 
-                # Obtener datos editados
-                edited_df = pd.DataFrame(grid_response['data'])
+                    # Configuración de AgGrid para edición
+                    gb = GridOptionsBuilder.from_dataframe(df)
+                    gb.configure_default_column(editable=True, groupable=True)
 
-                # Verificar columnas esenciales
-                essential_cols = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
-                for col in essential_cols:
-                    if col not in edited_df.columns:
-                        st.error(f"La columna '{col}' está ausente en los datos editados.")
-                        st.stop()
+                    # Configurar columnas para mostrar sin decimales
+                    numeric_columns_aggrid = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                                              'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
+                    for col in numeric_columns_aggrid:
+                        gb.configure_column(
+                            col,
+                            type=['numericColumn'],
+                            valueFormatter="Math.round(x).toLocaleString()"
+                        )
 
-                # Limpiar y convertir columnas numéricas
-                numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-                for col in numeric_columns:
-                    edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+                    # Configurar la columna 'Total' para cálculo dinámico sin decimales
+                    gb.configure_column('Total', editable=False, valueGetter=JsCode("""
+                        function(params) {
+                            return Math.round(
+                                Number(params.data['Costo de Pasaje']) * (Number(params.data['Alojamiento']) + Number(params.data['Per-diem y Otros']) + Number(params.data['Movilidad'])) * 
+                                Number(params.data['Días']) * Number(params.data['Cantidad de Funcionarios'])
+                            );
+                        }
+                    """))
 
-                # Recalcular 'Total'
-                edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
+                    # Personalizar apariencia de la tabla
+                    gb.configure_grid_options(domLayout='normal')
+                    grid_options = gb.build()
 
-                # Calcular métricas sin decimales
-                total_sum = edited_df['Total'].sum()
-                difference = desired_total - total_sum
+                    # Mostrar tabla editable
+                    grid_response = AgGrid(
+                        df,
+                        gridOptions=grid_options,
+                        data_return_mode=DataReturnMode.FILTERED,
+                        update_mode='MODEL_CHANGED',
+                        fit_columns_on_grid_load=False,
+                        height=400,
+                        width='100%',
+                        enable_enterprise_modules=False,
+                        allow_unsafe_jscode=True,
+                        theme='alpine'
+                    )
 
-                # Mostrar métricas sin decimales
-                col1, col2 = st.columns(2)
-                col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
-                col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
+                    # Obtener datos editados
+                    edited_df = pd.DataFrame(grid_response['data'])
 
-                # Guardar datos editados en cache
-                save_to_cache(edited_df, 'VPO', 'Consultorías')
+                    # Verificar columnas esenciales
+                    essential_cols = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                                      'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Objetivo', 'Total']
+                    for col in essential_cols:
+                        if col not in edited_df.columns:
+                            st.error(f"La columna '{col}' está ausente en los datos editados.")
+                            st.stop()
 
-                # Descargar tabla modificada sin decimales
-                st.subheader("Descargar Tabla Modificada - Consultorías VPO")
-                edited_df['Total'] = edited_df['Total'].round(0)
-                csv = edited_df.to_csv(index=False).encode('utf-8')
-                st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_consultorias_vpo.csv", mime="text/csv")
+                    # Limpiar y convertir columnas numéricas
+                    numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                                       'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
+                    for col in numeric_columns:
+                        edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
 
-    elif main_page == "VPD":
+                    # Verificar valores en 'Objetivo'
+                    if 'Objetivo' in edited_df.columns and not edited_df['Objetivo'].dropna().isin(['R', 'E']).all():
+                        st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de Objetivo.")
+
+                    # Recalcular 'Total' si es necesario
+                    edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
+
+                    # Calcular métricas sin decimales
+                    total_sum = edited_df['Total'].sum()
+                    difference = desired_total - total_sum
+
+                    # Mostrar métricas sin decimales
+                    col1, col2 = st.columns(2)
+                    col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
+                    col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
+
+                    # Resumen por País y Objetivo
+                    summary_country = edited_df.groupby('País')['Total'].sum().reset_index()
+                    summary_obj = edited_df[edited_df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
+
+                    # Crear gráficos de dona actualizados
+                    col3, col4 = st.columns(2)
+
+                    # Gráfico de Dona: Montos Totales por País (Actualizado)
+                    fig3 = crear_dona(
+                        df=summary_country,
+                        nombres='País',
+                        valores='Total',
+                        titulo="Montos Totales por País (Actualizado)",
+                        color_map=pais_color_map,
+                        hole=0.5,        # Aumento del hole para anillo más delgado
+                        height=300,      # Reducción de tamaño del gráfico
+                        margin_l=50      # Ajuste de márgenes
+                    )
+                    col3.plotly_chart(fig3, use_container_width=True)
+
+                    # Gráfico de Dona: Distribución por Objetivo R y E (Actualizado)
+                    if not summary_obj.empty:
+                        fig4 = crear_dona(
+                            df=summary_obj,
+                            nombres='Objetivo',
+                            valores='Total',
+                            titulo="Distribución por Objetivo R y E (Actualizado)",
+                            color_map=objetivo_color_map,
+                            hole=0.5,        # Aumento del hole para anillo más delgado
+                            height=300,      # Reducción de tamaño del gráfico
+                            margin_l=50      # Ajuste de márgenes
+                        )
+                        col4.plotly_chart(fig4, use_container_width=True)
+
+                    # Guardar datos editados en cache
+                    save_to_cache(edited_df, 'VPD', 'Misiones')
+
+                    # Descargar tabla modificada sin decimales
+                    st.subheader("Descargar Tabla Modificada - Misiones VPD")
+                    edited_df['Total'] = edited_df['Total'].round(0)
+                    csv = edited_df.to_csv(index=False).encode('utf-8')
+                    st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_misiones_vpd.csv", mime="text/csv")
+
+    elif main_page == "VPE":
+        # Aquí debes implementar la lógica específica para la página VPE
+        st.header("VPE - Página en Desarrollo")
+        st.write("Aquí puedes agregar las funcionalidades específicas para VPE.")
+        # Ejemplo de estructura similar a VPO y VPD
+        # Puedes replicar el manejo de vistas, subpáginas, autenticación de datos, etc.
+
+    elif main_page == "VPF":
         # Seleccionar Vista: Misiones o Consultorías
-        view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPD_view")
+        view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPF_view")
 
         if view == "Misiones":
-            page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPD_Misiones_page")
+            page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPF_Misiones_page")
             file_path = 'BDD_Ajuste.xlsx'
-            sheet_name = 'Misiones_VPD'
-            cache_file = 'cache/VPD_Misiones_DPP2025.csv'
+            sheet_name = 'Misiones_VPF'  # Define la hoja correspondiente en tu Excel
+            cache_file = 'cache/VPF_Misiones_DPP2025.csv'
             cache_dir = 'cache'
 
-            # Función para procesar el DataFrame de VPD Misiones
-            def process_vpd_misiones_df(df, sheet_name):
+            # Función para procesar el DataFrame de VPF Misiones
+            def process_vpf_misiones_df(df, sheet_name):
                 # Verificar columnas
-                required_columns = ['País', 'Operación', 'VPD/AREA', 'Cantidad de Funcionarios', 'Días', 
+                required_columns = ['País', 'Motivo', 'VPF/AREA', 'Cantidad de Funcionarios', 'Días', 
                                     'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
                 for col in required_columns:
                     if col not in df.columns:
@@ -729,7 +785,7 @@ def handle_page(main_page):
                         st.stop()
 
                     # Procesar datos
-                    df = process_vpd_misiones_df(df, sheet_name)
+                    df = process_vpf_misiones_df(df, sheet_name)
             else:
                 # Cargar datos desde Excel
                 try:
@@ -742,14 +798,54 @@ def handle_page(main_page):
                     st.stop()
 
                 # Procesar datos
-                df = process_vpd_misiones_df(df, sheet_name)
+                df = process_vpf_misiones_df(df, sheet_name)
 
-            # Página Requerimiento del área para Misiones VPD
+            # Definir paleta de colores para VPF/AREA
+            vpf_area_unique = df['VPF/AREA'].unique()
+            # Asignar colores únicos a cada VPF/AREA
+            vpf_area_color_map = {area: px.colors.qualitative.Pastel[i % len(px.colors.qualitative.Pastel)] for i, area in enumerate(vpf_area_unique)}
+
+            # Página Requerimiento del área para Misiones VPF
             if page == "Requerimiento del área":
-                st.header("VPD - Misiones: Requerimiento del área")
+                st.header("VPF - Misiones: Requerimiento del área")
 
-                # Mostrar tabla completa sin decimales
-                st.subheader("Tabla Completa - Misiones VPD")
+                # Resumen por País
+                summary_country = df.groupby('País')['Total'].sum().reset_index()
+
+                # Resumen por VPF/AREA
+                summary_vpf_area = df.groupby('VPF/AREA')['Total'].sum().reset_index()
+
+                # Crear gráficos de dona
+                col1, col2 = st.columns(2)
+
+                # Gráfico de Dona: Montos Totales por País
+                fig1 = crear_dona(
+                    df=summary_country,
+                    nombres='País',
+                    valores='Total',
+                    titulo="Montos Totales por País",
+                    color_map=vpf_area_color_map,  # Puedes ajustar el color_map si es necesario
+                    hole=0.5,        # Aumento del hole para anillo más delgado
+                    height=300,      # Reducción de tamaño del gráfico
+                    margin_l=50      # Ajuste de márgenes
+                )
+                col1.plotly_chart(fig1, use_container_width=True)
+
+                # Gráfico de Dona: Distribución por VPF/AREA
+                fig2 = crear_dona(
+                    df=summary_vpf_area,
+                    nombres='VPF/AREA',
+                    valores='Total',
+                    titulo="Distribución por VPF/AREA",
+                    color_map=vpf_area_color_map,
+                    hole=0.5,        # Aumento del hole para anillo más delgado
+                    height=300,      # Reducción de tamaño del gráfico
+                    margin_l=50      # Ajuste de márgenes
+                )
+                col2.plotly_chart(fig2, use_container_width=True)
+
+                # Mostrar tabla completa con formato sin decimales en columnas específicas
+                st.subheader("Tabla Completa - Misiones VPF")
                 st.dataframe(
                     df.style.format({
                         "Cantidad de Funcionarios": "{:.0f}",
@@ -763,12 +859,12 @@ def handle_page(main_page):
                     height=400
                 )
 
-            # Página DPP 2025 para Misiones VPD
+            # Página DPP 2025 para Misiones VPF
             elif page == "DPP 2025":
-                st.header("VPD - Misiones: DPP 2025")
+                st.header("VPF - Misiones: DPP 2025")
 
                 # Monto Total Deseado
-                desired_total = deseados["VPD"]["Misiones"]
+                desired_total = deseados["VPF"]["Misiones"]
                 st.subheader(f"Monto Total Deseado: {desired_total:,.0f} USD")
 
                 st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
@@ -791,10 +887,10 @@ def handle_page(main_page):
                 gb.configure_column('Total', editable=False, valueGetter=JsCode("""
                     function(params) {
                         return Math.round(
-                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Costo de Pasaje']) +
-                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Días']) * Number(params.data['Alojamiento']) +
-                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Días']) * Number(params.data['Per-diem y Otros']) +
-                            Number(params.data['Cantidad de Funcionarios']) * Number(params.data['Movilidad'])
+                            Number(params.data['Costo de Pasaje']) * 
+                            (Number(params.data['Alojamiento']) + Number(params.data['Per-diem y Otros']) + Number(params.data['Movilidad'])) * 
+                            Number(params.data['Días']) * 
+                            Number(params.data['Cantidad de Funcionarios'])
                         );
                     }
                 """))
@@ -821,8 +917,8 @@ def handle_page(main_page):
                 edited_df = pd.DataFrame(grid_response['data'])
 
                 # Verificar columnas esenciales
-                essential_cols = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
-                                  'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Objetivo', 'Total']
+                essential_cols = ['País', 'Motivo', 'VPF/AREA', 'Cantidad de Funcionarios', 'Días', 
+                                  'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
                 for col in essential_cols:
                     if col not in edited_df.columns:
                         st.error(f"La columna '{col}' está ausente en los datos editados.")
@@ -834,7 +930,7 @@ def handle_page(main_page):
                 for col in numeric_columns:
                     edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
 
-                # Verificar valores en 'Objetivo'
+                # Verificar valores en 'Objetivo' si es aplicable (dependiendo de si VPF utiliza esta columna)
                 if 'Objetivo' in edited_df.columns and not edited_df['Objetivo'].dropna().isin(['R', 'E']).all():
                     st.warning("La columna 'Objetivo' contiene valores distintos a 'R' y 'E'. Estos valores serán ignorados en los gráficos de Objetivo.")
 
@@ -850,9 +946,9 @@ def handle_page(main_page):
                 col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
                 col2.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
 
-                # Resumen por País y Objetivo
+                # Resumen por País y VPF/AREA
                 summary_country = edited_df.groupby('País')['Total'].sum().reset_index()
-                summary_obj = edited_df[edited_df['Objetivo'].isin(['R', 'E'])].groupby('Objetivo')['Total'].sum().reset_index()
+                summary_vpf_area = edited_df.groupby('VPF/AREA')['Total'].sum().reset_index()
 
                 # Crear gráficos de dona actualizados
                 col3, col4 = st.columns(2)
@@ -863,59 +959,44 @@ def handle_page(main_page):
                     nombres='País',
                     valores='Total',
                     titulo="Montos Totales por País (Actualizado)",
-                    color_map=pais_color_map,
+                    color_map=vpf_area_color_map,
                     hole=0.5,        # Aumento del hole para anillo más delgado
                     height=300,      # Reducción de tamaño del gráfico
                     margin_l=50      # Ajuste de márgenes
                 )
                 col3.plotly_chart(fig3, use_container_width=True)
 
-                # Gráfico de Dona: Distribución por Objetivo R y E (Actualizado)
-                if not summary_obj.empty:
-                    fig4 = crear_dona(
-                        df=summary_obj,
-                        nombres='Objetivo',
-                        valores='Total',
-                        titulo="Distribución por Objetivo R y E (Actualizado)",
-                        color_map=objetivo_color_map,
-                        hole=0.5,        # Aumento del hole para anillo más delgado
-                        height=300,      # Reducción de tamaño del gráfico
-                        margin_l=50      # Ajuste de márgenes
-                    )
-                    col4.plotly_chart(fig4, use_container_width=True)
+                # Gráfico de Dona: Distribución por VPF/AREA (Actualizado)
+                fig4 = crear_dona(
+                    df=summary_vpf_area,
+                    nombres='VPF/AREA',
+                    valores='Total',
+                    titulo="Distribución por VPF/AREA (Actualizado)",
+                    color_map=vpf_area_color_map,
+                    hole=0.5,        # Aumento del hole para anillo más delgado
+                    height=300,      # Reducción de tamaño del gráfico
+                    margin_l=50      # Ajuste de márgenes
+                )
+                col4.plotly_chart(fig4, use_container_width=True)
 
                 # Guardar datos editados en cache
-                save_to_cache(edited_df, 'VPD', 'Misiones')
+                save_to_cache(edited_df, 'VPF', 'Misiones')
 
                 # Descargar tabla modificada sin decimales
-                st.subheader("Descargar Tabla Modificada - Misiones VPD")
+                st.subheader("Descargar Tabla Modificada - Misiones VPF")
                 edited_df['Total'] = edited_df['Total'].round(0)
                 csv = edited_df.to_csv(index=False).encode('utf-8')
-                st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_misiones_vpd.csv", mime="text/csv")
+                st.download_button(label="Descargar CSV", data=csv, file_name="tabla_modificada_misiones_vpf.csv", mime="text/csv")
 
-    elif main_page == "VPE":
-        # Aquí debes implementar la lógica específica para la página VPE
-        st.header("VPE - Página en Desarrollo")
-        st.write("Aquí puedes agregar las funcionalidades específicas para VPE.")
-        # Ejemplo de estructura similar a VPO y VPD
-        # Puedes replicar el manejo de vistas, subpáginas, autenticación de datos, etc.
+        elif main_page == "PRE":
+            # Aquí debes implementar la lógica específica para la página PRE
+            st.header("PRE - Página en Desarrollo")
+            st.write("Aquí puedes agregar las funcionalidades específicas para PRE.")
+            # Ejemplo de estructura similar a VPO y VPD
+            # Puedes replicar el manejo de vistas, subpáginas, autenticación de datos, etc.
 
-    elif main_page == "VPF":
-        # Aquí debes implementar la lógica específica para la página VPF
-        st.header("VPF - Página en Desarrollo")
-        st.write("Aquí puedes agregar las funcionalidades específicas para VPF.")
-        # Ejemplo de estructura similar a VPO y VPD
-        # Puedes replicar el manejo de vistas, subpáginas, autenticación de datos, etc.
-
-    elif main_page == "PRE":
-        # Aquí debes implementar la lógica específica para la página PRE
-        st.header("PRE - Página en Desarrollo")
-        st.write("Aquí puedes agregar las funcionalidades específicas para PRE.")
-        # Ejemplo de estructura similar a VPO y VPD
-        # Puedes replicar el manejo de vistas, subpáginas, autenticación de datos, etc.
-
-    elif main_page == "Consolidado":
-        create_consolidado(deseados)
+        elif main_page == "Consolidado":
+            create_consolidado(deseados)
 
 # Ejecutar la función según la selección
 handle_page(main_page)

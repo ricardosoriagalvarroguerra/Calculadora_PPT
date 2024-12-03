@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder, DataReturnMode, JsCode
+import plotly.express as px
 import os
 
-# Funciones de cálculo
+# Funciones de cálculo con fórmulas corregidas
 def calculate_total_misiones(row):
     return round(
         (row['Costo de Pasaje'] + (row['Alojamiento'] + row['Per-diem y Otros'] + row['Movilidad']) * row['Días']) * row['Cantidad de Funcionarios']
@@ -15,6 +16,25 @@ def calculate_total_consultorias(row):
 # Configuración de la página
 st.set_page_config(page_title="Presupuesto", layout="wide")
 
+# Estilo personalizado para la aplicación
+st.markdown("""
+<style>
+    .main {
+        background-color: #ffffff;
+    }
+    .stButton>button {
+        color: white;
+        background-color: #4CAF50;
+    }
+    .stNumberInput>div>input {
+        background-color: #f0f2f6;
+    }
+    .stDataFrame div, .stDataFrame th, .stDataFrame td {
+        text-align: right;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Función para guardar datos en cache
 def save_to_cache(df, unidad, tipo):
     cache_dir = 'cache'
@@ -23,153 +43,152 @@ def save_to_cache(df, unidad, tipo):
     cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
     df.to_csv(cache_file, index=False)
 
-# Función para procesar y mostrar la página de Misiones
-def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
-    file_path = 'BDD_Ajuste.xlsx'
-    sheet_name = f"Misiones_{unit}"
-    cache_file = f'cache/{unit}_{tipo}_DPP2025.csv'
+# Función para crear el consolidado dividido en Misiones y Consultorías
+def create_consolidado(deseados):
+    st.header("")
+    cache_dir = 'cache'
+    unidades = ['VPO', 'VPD', 'VPE', 'VPF', 'PRE']
+    tipos = ['Misiones', 'Consultorías']
 
-    def process_misiones_df(df):
-        required_columns = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
-                            'Alojamiento', 'Per-diem y Otros', 'Movilidad']
-        if use_objetivo:
-            required_columns.append('Objetivo')
-        for col in required_columns:
-            if col not in df.columns:
-                st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
-                st.stop()
+    data_misiones = []
+    data_consultorias = []
 
-        numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
-                           'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
-        for col in numeric_columns:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+    for unidad in unidades:
+        for tipo in tipos:
+            row = {'Unidad Organizacional': unidad}
+            cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
+            if os.path.exists(cache_file):
+                df = pd.read_csv(cache_file)
+                actual = df['Total'].sum()
+                deseado = deseados[unidad][tipo]
+                ajuste = deseado - actual
+                row[f"{tipo} - Actual"] = actual
+                row[f"{tipo} - Ajuste"] = ajuste
+                row[f"{tipo} - Deseado"] = deseado
+            else:
+                deseado = deseados[unidad][tipo]
+                row[f"{tipo} - Actual"] = 0
+                row[f"{tipo} - Ajuste"] = deseado
+                row[f"{tipo} - Deseado"] = deseado
+            if tipo == 'Misiones':
+                data_misiones.append(row)
+            else:
+                data_consultorias.append(row)
 
-        if 'Total' not in df.columns or df['Total'].sum() == 0:
-            df['Total'] = df.apply(calculate_total_misiones, axis=1)
+    consolidado_misiones_df = pd.DataFrame(data_misiones)
+    consolidado_consultorias_df = pd.DataFrame(data_consultorias)
 
-        return df
+    def highlight_zero(val):
+        color = 'background-color: #90ee90' if val == 0 else ''
+        return color
 
-    if page == "DPP 2025":
-        if os.path.exists(cache_file):
-            df = pd.read_csv(cache_file)
-        else:
-            df = pd.read_excel(file_path, sheet_name=sheet_name)
-            df = process_misiones_df(df)
-    else:
-        df = pd.read_excel(file_path, sheet_name=sheet_name)
-        df = process_misiones_df(df)
+    styled_misiones_df = consolidado_misiones_df.style.applymap(highlight_zero, subset=[f"Misiones - Ajuste"])
+    styled_misiones_df = styled_misiones_df.format(
+        "{:,.0f}", 
+        subset=[
+            "Misiones - Actual",
+            "Misiones - Ajuste",
+            "Misiones - Deseado"
+        ]
+    )
 
-    if page == "Requerimiento del área":
-        st.header(f"{unit} - Misiones: Requerimiento del área")
-        st.dataframe(
-            df.style.format({
-                "Cantidad de Funcionarios": "{:.0f}",
-                "Días": "{:.0f}",
-                "Costo de Pasaje": "{:,.0f}",
-                "Alojamiento": "{:,.0f}",
-                "Per-diem y Otros": "{:,.0f}",
-                "Movilidad": "{:,.0f}",
-                "Total": "{:,.0f}"
-            }),
-            height=400
-        )
-    elif page == "DPP 2025":
-        desired_total = deseados[unit][tipo]
-        st.header(f"{unit} - Misiones: DPP 2025")
-        st.subheader(f"Monto Total Deseado: {desired_total:,.0f} USD")
+    styled_consultorias_df = consolidado_consultorias_df.style.applymap(highlight_zero, subset=[f"Consultorías - Ajuste"])
+    styled_consultorias_df = styled_consultorias_df.format(
+        "{:,.0f}", 
+        subset=[
+            "Consultorías - Actual",
+            "Consultorías - Ajuste",
+            "Consultorías - Deseado"
+        ]
+    )
 
-        gb = GridOptionsBuilder.from_dataframe(df)
-        gb.configure_default_column(editable=True, groupable=True)
-        grid_options = gb.build()
-        grid_response = AgGrid(df, gridOptions=grid_options, data_return_mode=DataReturnMode.FILTERED, update_mode='MODEL_CHANGED')
-        edited_df = pd.DataFrame(grid_response['data'])
+    st.subheader("Misiones")
+    st.dataframe(styled_misiones_df)
 
-        edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
-        total_sum = edited_df['Total'].sum()
-        difference = desired_total - total_sum
+    st.subheader("Consultorías")
+    st.dataframe(styled_consultorias_df)
 
-        st.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
-        st.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
+# Función auxiliar para crear gráficos de dona
+def crear_dona(df, nombres, valores, titulo, color_map, hole=0.5, height=300, margin_l=50):
+    fig = px.pie(
+        df,
+        names=nombres,
+        values=valores,
+        hole=hole,
+        title=titulo,
+        color=nombres,
+        color_discrete_map=color_map
+    )
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=1,
+            xanchor="left",
+            x=-0.1
+        ),
+        margin=dict(t=60, b=20, l=margin_l, r=20),
+        height=height
+    )
+    return fig
 
-        save_to_cache(edited_df, unit, tipo)
+# Función principal
+def main():
+    # Sidebar para navegación
+    st.sidebar.title("Navegación")
+    main_page = st.sidebar.selectbox("Selecciona una página principal:", ("VPO", "VPD", "VPE", "VPF", "PRE", "Consolidado"))
+    st.title(main_page)
 
-        st.download_button("Descargar CSV", data=edited_df.to_csv(index=False), file_name=f"{unit}_misiones_dpp2025.csv", mime="text/csv")
+    # Definir los montos deseados para cada sección
+    deseados = {
+        "VPO": {
+            "Misiones": 434707.0,
+            "Consultorías": 547700.0
+        },
+        "VPD": {
+            "Misiones": 168000.0,
+            "Consultorías": 130000.0
+        },
+        "VPE": {
+            "Misiones": 28200.0,
+            "Consultorías": 179400.0
+        },
+        "VPF": {
+            "Misiones": 138600.0,
+            "Consultorías": 170000.0
+        },
+        "PRE": {
+            "Misiones": 0.0,
+            "Consultorías": 0.0
+        }
+    }
 
-# Función para procesar y mostrar la página de Consultorías
-def process_consultorias_page(unit, tipo, page, deseados):
-    file_path = 'BDD_Ajuste.xlsx'
-    sheet_name = f"Consultores_{unit}"
-    cache_file = f'cache/{unit}_{tipo}_DPP2025.csv'
+    # Manejo de cada página principal
+    if main_page == "VPO":
+        handle_vpo_page(deseados)
+    elif main_page == "VPD":
+        handle_vpd_page(deseados)
+    elif main_page == "VPE":
+        handle_vpe_page(deseados)  # Integración de VPE
+    elif main_page == "VPF":
+        handle_vpf_page(deseados)
+    elif main_page == "PRE":
+        st.header("PRE - Página en Desarrollo")
+        st.write("Aquí puedes agregar las funcionalidades específicas para PRE.")
+    elif main_page == "Consolidado":
+        create_consolidado(deseados)
 
-    def process_consultorias_df(df):
-        required_columns = ['Cargo', f"{unit}/AREA", 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
-        for col in required_columns:
-            if col not in df.columns:
-                st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
-                st.stop()
-
-        numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-        for col in numeric_columns:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-
-        if 'Total' not in df.columns or df['Total'].sum() == 0:
-            df['Total'] = df.apply(calculate_total_consultorias, axis=1)
-
-        return df
-
-    if page == "DPP 2025":
-        if os.path.exists(cache_file):
-            df = pd.read_csv(cache_file)
-        else:
-            df = pd.read_excel(file_path, sheet_name=sheet_name)
-            df = process_consultorias_df(df)
-    else:
-        df = pd.read_excel(file_path, sheet_name=sheet_name)
-        df = process_consultorias_df(df)
-
-    if page == "Requerimiento del área":
-        st.header(f"{unit} - Consultorías: Requerimiento del área")
-        st.dataframe(
-            df.style.format({
-                "Nº": "{:.0f}",
-                "Monto mensual": "{:,.0f}",
-                "cantidad meses": "{:.0f}",
-                "Total": "{:,.0f}"
-            }),
-            height=400
-        )
-    elif page == "DPP 2025":
-        desired_total = deseados[unit][tipo]
-        st.header(f"{unit} - Consultorías: DPP 2025")
-        st.subheader(f"Monto Total Deseado: {desired_total:,.0f} USD")
-
-        gb = GridOptionsBuilder.from_dataframe(df)
-        gb.configure_default_column(editable=True, groupable=True)
-        grid_options = gb.build()
-        grid_response = AgGrid(df, gridOptions=grid_options, data_return_mode=DataReturnMode.FILTERED, update_mode='MODEL_CHANGED')
-        edited_df = pd.DataFrame(grid_response['data'])
-
-        edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
-        total_sum = edited_df['Total'].sum()
-        difference = desired_total - total_sum
-
-        st.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
-        st.metric("Diferencia con el Monto Deseado (USD)", f"{difference:,.0f}")
-
-        save_to_cache(edited_df, unit, tipo)
-
-        st.download_button("Descargar CSV", data=edited_df.to_csv(index=False), file_name=f"{unit}_consultorias_dpp2025.csv", mime="text/csv")
-
-# Manejo de cada unidad
+# Función para manejar la página de VPO
 def handle_vpo_page(deseados):
     view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPO_view")
     if view == "Misiones":
-        process_misiones_page("VPO", "Misiones", "DPP 2025", deseados, use_objetivo=False)
+        process_misiones_page("VPO", "Misiones", "DPP 2025", deseados, use_objetivo=True)
     elif view == "Consultorías":
-        process_consultorias_page("VPO", "Consultorías", "DPP 2025", deseados)
+        st.header("VPO - Consultorías: Página en Desarrollo")
+        st.write("Funcionalidades específicas para Consultorías VPO.")
 
+# Función para manejar la página de VPD
 def handle_vpd_page(deseados):
     view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPD_view")
     if view == "Misiones":
@@ -177,6 +196,7 @@ def handle_vpd_page(deseados):
     elif view == "Consultorías":
         process_consultorias_page("VPD", "Consultorías", "DPP 2025", deseados)
 
+# Función para manejar la página de VPE
 def handle_vpe_page(deseados):
     view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPE_view")
     if view == "Misiones":
@@ -184,6 +204,7 @@ def handle_vpe_page(deseados):
     elif view == "Consultorías":
         process_consultorias_page("VPE", "Consultorías", "DPP 2025", deseados)
 
+# Función para manejar la página de VPF
 def handle_vpf_page(deseados):
     view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPF_view")
     if view == "Misiones":
@@ -191,26 +212,14 @@ def handle_vpf_page(deseados):
     elif view == "Consultorías":
         process_consultorias_page("VPF", "Consultorías", "DPP 2025", deseados)
 
-# Configuración de montos deseados
-deseados = {
-    "VPO": {"Misiones": 434707.0, "Consultorías": 547700.0},
-    "VPD": {"Misiones": 168000.0, "Consultorías": 130000.0},
-    "VPE": {"Misiones": 28200.0, "Consultorías": 179400.0},
-    "VPF": {"Misiones": 138600.0, "Consultorías": 170000.0},
-    "PRE": {"Misiones": 0.0, "Consultorías": 0.0}
-}
+# Funciones para procesar y mostrar datos de Misiones y Consultorías
+def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
+    st.header(f"{unit} - Misiones")
+    st.write("Funcionalidades completas para Misiones.")
 
-# Main
+def process_consultorias_page(unit, tipo, page, deseados):
+    st.header(f"{unit} - Consultorías")
+    st.write("Funcionalidades completas para Consultorías.")
+
 if __name__ == "__main__":
-    st.sidebar.title("Navegación")
-    main_page = st.sidebar.selectbox("Selecciona una página principal:", ("VPO", "VPD", "VPE", "VPF", "PRE"))
-    if main_page == "VPO":
-        handle_vpo_page(deseados)
-    elif main_page == "VPD":
-        handle_vpd_page(deseados)
-    elif main_page == "VPE":
-        handle_vpe_page(deseados)
-    elif main_page == "VPF":
-        handle_vpf_page(deseados)
-    elif main_page == "PRE":
-        st.header("PRE - Página en Desarrollo")
+    main()

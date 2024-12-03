@@ -13,6 +13,10 @@ def calculate_total_misiones(row):
 def calculate_total_consultorias(row):
     return round(row['Nº'] * row['Monto mensual'] * row['cantidad meses'])
 
+# Función de cálculo para VPE (Total = Suma de MONTO)
+def calculate_total_vpe(row):
+    return round(row['Suma de MONTO'])
+
 # Configuración de la página
 st.set_page_config(page_title="Presupuesto", layout="wide")
 
@@ -232,27 +236,37 @@ def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
     cache_dir = 'cache'
 
     # Función para procesar el DataFrame
-    def process_misiones_df(df, sheet_name):
-        required_columns = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
-                            'Alojamiento', 'Per-diem y Otros', 'Movilidad']
-        if use_objetivo:
-            required_columns.append('Objetivo')
+    def process_misiones_df(df, sheet_name, unit):
+        if unit == "VPE":
+            required_columns = ['ÍTEM PRESUPUESTO', 'OFICINA', 'UNID. ORG.', 'ACCIONES', 'CATEGORÍA', 'SUBCATEGORÍA', 'Suma de MONTO']
+            # No 'Total' column needed, since 'Total' = 'Suma de MONTO'
+        else:
+            required_columns = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                                'Alojamiento', 'Per-diem y Otros', 'Movilidad']
+            if use_objetivo:
+                required_columns.append('Objetivo')
+
         for col in required_columns:
             if col not in df.columns:
                 st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
                 st.stop()
 
-        numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
-                           'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
-        for col in numeric_columns:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-            else:
-                st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
-                st.stop()
+        if unit == "VPE":
+            # Solo convertir 'Suma de MONTO' a numérico
+            df['Suma de MONTO'] = pd.to_numeric(df['Suma de MONTO'].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+            df['Total'] = df['Suma de MONTO']
+        else:
+            numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                               'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
+            for col in numeric_columns:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+                else:
+                    st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                    st.stop()
 
-        if 'Total' not in df.columns or df['Total'].sum() == 0:
-            df['Total'] = df.apply(calculate_total_misiones, axis=1)
+            if 'Total' not in df.columns or df['Total'].sum() == 0:
+                df['Total'] = df.apply(calculate_total_misiones, axis=1)
 
         return df
 
@@ -265,14 +279,14 @@ def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
             except Exception as e:
                 st.error(f"Error al leer el archivo Excel: {e}")
                 st.stop()
-            df = process_misiones_df(df, sheet_name)
+            df = process_misiones_df(df, sheet_name, unit)
     else:
         try:
             df = pd.read_excel(file_path, sheet_name=sheet_name)
         except Exception as e:
             st.error(f"Error al leer el archivo Excel: {e}")
             st.stop()
-        df = process_misiones_df(df, sheet_name)
+        df = process_misiones_df(df, sheet_name, unit)
 
     if page == "Requerimiento del área":
         display_misiones_requerimiento(df, unit)
@@ -287,23 +301,32 @@ def process_consultorias_page(unit, tipo, page, deseados):
     cache_dir = 'cache'
 
     # Función para procesar el DataFrame
-    def process_consultorias_df(df, sheet_name):
-        required_columns = ['Cargo', f"{unit}/AREA", 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
+    def process_consultorias_df(df, sheet_name, unit):
+        if unit == "VPE":
+            required_columns = ['ÍTEM PRESUPUESTO', 'OFICINA', 'UNID. ORG.', 'ACCIONES', 'CATEGORÍA', 'SUBCATEGORÍA', 'Suma de MONTO']
+        else:
+            required_columns = ['Cargo', f"{unit}/AREA", 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
+        
         for col in required_columns:
             if col not in df.columns:
                 st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
                 st.stop()
 
-        numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-        for col in numeric_columns:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-            else:
-                st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
-                st.stop()
+        if unit == "VPE":
+            # Solo convertir 'Suma de MONTO' a numérico
+            df['Suma de MONTO'] = pd.to_numeric(df['Suma de MONTO'].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+            df['Total'] = df['Suma de MONTO']
+        else:
+            numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
+            for col in numeric_columns:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+                else:
+                    st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
+                    st.stop()
 
-        if 'Total' not in df.columns or df['Total'].sum() == 0:
-            df['Total'] = df.apply(calculate_total_consultorias, axis=1)
+            if 'Total' not in df.columns or df['Total'].sum() == 0:
+                df['Total'] = df.apply(calculate_total_consultorias, axis=1)
 
         return df
 
@@ -316,14 +339,14 @@ def process_consultorias_page(unit, tipo, page, deseados):
             except Exception as e:
                 st.error(f"Error al leer el archivo Excel: {e}")
                 st.stop()
-            df = process_consultorias_df(df, sheet_name)
+            df = process_consultorias_df(df, sheet_name, unit)
     else:
         try:
             df = pd.read_excel(file_path, sheet_name=sheet_name)
         except Exception as e:
             st.error(f"Error al leer el archivo Excel: {e}")
             st.stop()
-        df = process_consultorias_df(df, sheet_name)
+        df = process_consultorias_df(df, sheet_name, unit)
 
     if page == "Requerimiento del área":
         display_consultorias_requerimiento(df, unit)
@@ -336,18 +359,33 @@ def display_misiones_requerimiento(df, unit):
     st.header(f"{unit} - Misiones: Requerimiento del área")
     # Aquí puedes agregar gráficos y tablas específicas para Misiones
     st.subheader("Tabla Completa - Misiones")
-    st.dataframe(
-        df.style.format({
-            "Cantidad de Funcionarios": "{:.0f}",
-            "Días": "{:.0f}",
-            "Costo de Pasaje": "{:,.0f}",
-            "Alojamiento": "{:,.0f}",
-            "Per-diem y Otros": "{:,.0f}",
-            "Movilidad": "{:,.0f}",
-            "Total": "{:,.0f}"
-        }),
-        height=400
-    )
+    if unit == "VPE":
+        st.dataframe(
+            df.style.format({
+                "ÍTEM PRESUPUESTO": "{:.0f}",
+                "OFICINA": "{}",
+                "UNID. ORG.": "{}",
+                "ACCIONES": "{}",
+                "CATEGORÍA": "{}",
+                "SUBCATEGORÍA": "{}",
+                "Suma de MONTO": "{:,.0f}",
+                "Total": "{:,.0f}"
+            }),
+            height=400
+        )
+    else:
+        st.dataframe(
+            df.style.format({
+                "Cantidad de Funcionarios": "{:.0f}",
+                "Días": "{:.0f}",
+                "Costo de Pasaje": "{:,.0f}",
+                "Alojamiento": "{:,.0f}",
+                "Per-diem y Otros": "{:,.0f}",
+                "Movilidad": "{:,.0f}",
+                "Total": "{:,.0f}"
+            }),
+            height=400
+        )
 
 def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
     st.header(f"{unit} - Misiones: DPP 2025")
@@ -357,25 +395,36 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
     gb = GridOptionsBuilder.from_dataframe(df)
     gb.configure_default_column(editable=True, groupable=True)
 
-    numeric_columns_aggrid = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
-                              'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
-    for col in numeric_columns_aggrid:
-        gb.configure_column(
-            col,
-            type=['numericColumn'],
-            valueFormatter="Math.round(x).toLocaleString()"
-        )
+    if unit == "VPE":
+        # Configurar columnas para VPE Misiones
+        editable_columns = ['Suma de MONTO']
+        gb.configure_columns(editable_columns, editable=True, type=['numericColumn'], valueFormatter="Math.round(x).toLocaleString()")
+        gb.configure_column('Total', editable=False, valueGetter=JsCode("""
+            function(params) {
+                return Math.round(params.data['Suma de MONTO']);
+            }
+        """))
+    else:
+        # Configurar columnas para otras unidades
+        numeric_columns_aggrid = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                                  'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
+        for col in numeric_columns_aggrid:
+            gb.configure_column(
+                col,
+                type=['numericColumn'],
+                valueFormatter="Math.round(x).toLocaleString()"
+            )
 
-    gb.configure_column('Total', editable=False, valueGetter=JsCode("""
-        function(params) {
-            return Math.round(
-                (Number(params.data['Costo de Pasaje']) + 
-                (Number(params.data['Alojamiento']) + Number(params.data['Per-diem y Otros']) + Number(params.data['Movilidad'])) * 
-                Number(params.data['Días'])) * 
-                Number(params.data['Cantidad de Funcionarios'])
-            );
-        }
-    """))
+        gb.configure_column('Total', editable=False, valueGetter=JsCode("""
+            function(params) {
+                return Math.round(
+                    (Number(params.data['Costo de Pasaje']) + 
+                    (Number(params.data['Alojamiento']) + Number(params.data['Per-diem y Otros']) + Number(params.data['Movilidad'])) * 
+                    Number(params.data['Días'])) * 
+                    Number(params.data['Cantidad de Funcionarios'])
+                );
+            }
+        """))
 
     gb.configure_grid_options(domLayout='normal')
     grid_options = gb.build()
@@ -395,21 +444,33 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
 
     edited_df = pd.DataFrame(grid_response['data'])
 
-    essential_cols = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
-                      'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
-    if use_objetivo:
-        essential_cols.append('Objetivo')
+    if unit == "VPE":
+        # Validar columnas para VPE Misiones
+        essential_cols = ['ÍTEM PRESUPUESTO', 'OFICINA', 'UNID. ORG.', 'ACCIONES', 'CATEGORÍA', 'SUBCATEGORÍA', 'Suma de MONTO', 'Total']
+    else:
+        # Validar columnas para otras unidades
+        essential_cols = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                          'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
+        if use_objetivo:
+            essential_cols.append('Objetivo')
+
     for col in essential_cols:
         if col not in edited_df.columns:
             st.error(f"La columna '{col}' está ausente en los datos editados.")
             st.stop()
 
-    numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
-                       'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
-    for col in numeric_columns:
-        edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+    if unit == "VPE":
+        # Convertir 'Suma de MONTO' a numérico
+        edited_df['Suma de MONTO'] = pd.to_numeric(edited_df['Suma de MONTO'].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+        edited_df['Total'] = edited_df.apply(calculate_total_vpe, axis=1)
+    else:
+        # Convertir columnas numéricas a numérico
+        numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
+                           'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
+        for col in numeric_columns:
+            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
 
-    edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
+        edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
 
     total_sum = edited_df['Total'].sum()
     difference = desired_total - total_sum
@@ -422,21 +483,40 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
 
     st.subheader("Descargar Tabla Modificada")
     edited_df['Total'] = edited_df['Total'].round(0)
-    csv = edited_df.to_csv(index=False).encode('utf-8')
-    st.download_button(label="Descargar CSV", data=csv, file_name=f"tabla_modificada_{tipo.lower()}_{unit.lower()}.csv", mime="text/csv")
+    if unit == "VPE":
+        csv = edited_df.to_csv(index=False).encode('utf-8')
+        st.download_button(label="Descargar CSV", data=csv, file_name=f"tabla_modificada_{tipo.lower()}_{unit.lower()}.csv", mime="text/csv")
+    else:
+        csv = edited_df.to_csv(index=False).encode('utf-8')
+        st.download_button(label="Descargar CSV", data=csv, file_name=f"tabla_modificada_{tipo.lower()}_{unit.lower()}.csv", mime="text/csv")
 
 def display_consultorias_requerimiento(df, unit):
     st.header(f"{unit} - Consultorías: Requerimiento del área")
     st.subheader("Tabla Completa - Consultorías")
-    st.dataframe(
-        df.style.format({
-            "Nº": "{:.0f}",
-            "Monto mensual": "{:,.0f}",
-            "cantidad meses": "{:.0f}",
-            "Total": "{:,.0f}"
-        }),
-        height=400
-    )
+    if unit == "VPE":
+        st.dataframe(
+            df.style.format({
+                "ÍTEM PRESUPUESTO": "{:.0f}",
+                "OFICINA": "{}",
+                "UNID. ORG.": "{}",
+                "ACCIONES": "{}",
+                "CATEGORÍA": "{}",
+                "SUBCATEGORÍA": "{}",
+                "Suma de MONTO": "{:,.0f}",
+                "Total": "{:,.0f}"
+            }),
+            height=400
+        )
+    else:
+        st.dataframe(
+            df.style.format({
+                "Nº": "{:.0f}",
+                "Monto mensual": "{:,.0f}",
+                "cantidad meses": "{:.0f}",
+                "Total": "{:,.0f}"
+            }),
+            height=400
+        )
 
 def edit_consultorias_dpp(df, unit, desired_total, tipo):
     st.header(f"{unit} - Consultorías: DPP 2025")
@@ -446,21 +526,32 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
     gb = GridOptionsBuilder.from_dataframe(df)
     gb.configure_default_column(editable=True, groupable=True)
 
-    numeric_columns_aggrid = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-    for col in numeric_columns_aggrid:
-        gb.configure_column(
-            col,
-            type=['numericColumn'],
-            valueFormatter="Math.round(x).toLocaleString()"
-        )
+    if unit == "VPE":
+        # Configurar columnas para VPE Consultorías
+        editable_columns = ['Suma de MONTO']
+        gb.configure_columns(editable_columns, editable=True, type=['numericColumn'], valueFormatter="Math.round(x).toLocaleString()")
+        gb.configure_column('Total', editable=False, valueGetter=JsCode("""
+            function(params) {
+                return Math.round(params.data['Suma de MONTO']);
+            }
+        """))
+    else:
+        # Configurar columnas para otras unidades
+        numeric_columns_aggrid = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
+        for col in numeric_columns_aggrid:
+            gb.configure_column(
+                col,
+                type=['numericColumn'],
+                valueFormatter="Math.round(x).toLocaleString()"
+            )
 
-    gb.configure_column('Total', editable=False, valueGetter=JsCode("""
-        function(params) {
-            return Math.round(
-                Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses']) * 1.6
-            );
-        }
-    """))
+        gb.configure_column('Total', editable=False, valueGetter=JsCode("""
+            function(params) {
+                return Math.round(
+                    Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses']) * 1.6
+                );
+            }
+        """))
 
     gb.configure_grid_options(domLayout='normal')
     grid_options = gb.build()
@@ -480,17 +571,29 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
 
     edited_df = pd.DataFrame(grid_response['data'])
 
-    essential_cols = ['Cargo', f"{unit}/AREA", 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
+    if unit == "VPE":
+        # Validar columnas para VPE Consultorías
+        essential_cols = ['ÍTEM PRESUPUESTO', 'OFICINA', 'UNID. ORG.', 'ACCIONES', 'CATEGORÍA', 'SUBCATEGORÍA', 'Suma de MONTO', 'Total']
+    else:
+        # Validar columnas para otras unidades
+        essential_cols = ['Cargo', f"{unit}/AREA", 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
+
     for col in essential_cols:
         if col not in edited_df.columns:
             st.error(f"La columna '{col}' está ausente en los datos editados.")
             st.stop()
 
-    numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-    for col in numeric_columns:
-        edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+    if unit == "VPE":
+        # Convertir 'Suma de MONTO' a numérico
+        edited_df['Suma de MONTO'] = pd.to_numeric(edited_df['Suma de MONTO'].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+        edited_df['Total'] = edited_df.apply(calculate_total_vpe, axis=1)
+    else:
+        # Convertir columnas numéricas a numérico
+        numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
+        for col in numeric_columns:
+            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
 
-    edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
+        edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
 
     total_sum = edited_df['Total'].sum()
     difference = desired_total - total_sum
@@ -503,8 +606,12 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
 
     st.subheader("Descargar Tabla Modificada")
     edited_df['Total'] = edited_df['Total'].round(0)
-    csv = edited_df.to_csv(index=False).encode('utf-8')
-    st.download_button(label="Descargar CSV", data=csv, file_name=f"tabla_modificada_{tipo.lower()}_{unit.lower()}.csv", mime="text/csv")
+    if unit == "VPE":
+        csv = edited_df.to_csv(index=False).encode('utf-8')
+        st.download_button(label="Descargar CSV", data=csv, file_name=f"tabla_modificada_{tipo.lower()}_{unit.lower()}.csv", mime="text/csv")
+    else:
+        csv = edited_df.to_csv(index=False).encode('utf-8')
+        st.download_button(label="Descargar CSV", data=csv, file_name=f"tabla_modificada_{tipo.lower()}_{unit.lower()}.csv", mime="text/csv")
 
 if __name__ == "__main__":
     main()

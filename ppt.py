@@ -11,7 +11,7 @@ def calculate_total_misiones(row):
     )
 
 def calculate_total_consultorias(row):
-    return round(row['Nº'] * row['Monto mensual'] * row['cantidad meses'] * 1.6)
+    return round(row['Nº'] * row['Monto mensual'] * row['cantidad meses'] )
 
 # Configuración de la página
 st.set_page_config(page_title="Presupuesto", layout="wide")

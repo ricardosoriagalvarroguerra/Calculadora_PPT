@@ -991,7 +991,7 @@ def handle_page(main_page):
         elif view == "Consultorías":
             page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPF_Consultorias_page")
             file_path = 'BDD_Ajuste.xlsx'
-            sheet_name = 'Consultorias_VPF'
+            sheet_name = 'Consultores_VPF'
             cache_file = 'cache/VPF_Consultorias_DPP2025.csv'
             cache_dir = 'cache'
 

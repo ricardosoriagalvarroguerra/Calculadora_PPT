@@ -63,12 +63,12 @@ def create_consolidado(deseados):
                 deseado = deseados[unidad][tipo]
                 ajuste = deseado - actual
                 row[f"{tipo} - Actual"] = actual
-                row[f"{tipo} - Ajuste"] = ajuste
+                row[f"{tipo} - DPP2025"] = ajuste
                 row[f"{tipo} - Deseado"] = deseado
             else:
                 deseado = deseados[unidad][tipo]
                 row[f"{tipo} - Actual"] = 0
-                row[f"{tipo} - Ajuste"] = deseado
+                row[f"{tipo} - DPP2025"] = deseado
                 row[f"{tipo} - Deseado"] = deseado
             if tipo == 'Misiones':
                 data_misiones.append(row)
@@ -82,22 +82,22 @@ def create_consolidado(deseados):
         color = 'background-color: #90ee90' if val == 0 else ''
         return color
 
-    styled_misiones_df = consolidado_misiones_df.style.applymap(highlight_zero, subset=[f"Misiones - Ajuste"])
+    styled_misiones_df = consolidado_misiones_df.style.applymap(highlight_zero, subset=[f"Misiones - DPP2025"])
     styled_misiones_df = styled_misiones_df.format(
         "{:,.0f}", 
         subset=[
             "Misiones - Actual",
-            "Misiones - Ajuste",
+            "Misiones - DPP2025",
             "Misiones - Deseado"
         ]
     )
 
-    styled_consultorias_df = consolidado_consultorias_df.style.applymap(highlight_zero, subset=[f"Consultorías - Ajuste"])
+    styled_consultorias_df = consolidado_consultorias_df.style.applymap(highlight_zero, subset=[f"Consultorías - DPP2025"])
     styled_consultorias_df = styled_consultorias_df.format(
         "{:,.0f}", 
         subset=[
             "Consultorías - Actual",
-            "Consultorías - Ajuste",
+            "Consultorías - DPP2025",
             "Consultorías - Deseado"
         ]
     )
@@ -172,7 +172,7 @@ def main():
         total_pre_misiones = df_pre_misiones['Total'].sum()
         deseados["PRE"]["Misiones"] = total_pre_misiones
     except Exception as e:
-        st.warning(f"No se pudo leer la hoja 'Misiones_PRE' para establecer el monto DPP 2025 de Misiones de PRE: {e}")
+        st.warning(f"No se pudo leer la hoja 'Misiones_PRE' para establecer el monto DPP2025 de Misiones de PRE: {e}")
         deseados["PRE"]["Misiones"] = 0.0
 
     try:
@@ -181,7 +181,7 @@ def main():
         total_pre_consultorias = df_pre_consultorias['Total'].sum()
         deseados["PRE"]["Consultorías"] = total_pre_consultorias
     except Exception as e:
-        st.warning(f"No se pudo leer la hoja 'Consultores_PRE' para establecer el monto DPP 2025 de Consultorías de PRE: {e}")
+        st.warning(f"No se pudo leer la hoja 'Consultores_PRE' para establecer el monto DPP2025 de Consultorías de PRE: {e}")
         deseados["PRE"]["Consultorías"] = 0.0
 
     # Manejo de cada página principal

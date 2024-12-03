@@ -11,7 +11,7 @@ def calculate_total_misiones(row):
     )
 
 def calculate_total_consultorias(row):
-    return round(row['Nº'] * row['Monto mensual'] * row['cantidad meses'] )
+    return round(row['Nº'] * row['Monto mensual'] * row['cantidad meses'])
 
 # Configuración de la página
 st.set_page_config(page_title="Presupuesto", layout="wide")
@@ -151,8 +151,8 @@ def main():
             "Consultorías": 130000.0
         },
         "VPE": {
-            "Misiones": 0.0,
-            "Consultorías": 0.0
+            "Misiones": 28000.0,
+            "Consultorías": 179400.0
         },
         "VPF": {
             "Misiones": 138600.0,
@@ -170,8 +170,7 @@ def main():
     elif main_page == "VPD":
         handle_vpd_page(deseados)
     elif main_page == "VPE":
-        st.header("VPE - Página en Desarrollo")
-        st.write("Aquí puedes agregar las funcionalidades específicas para VPE.")
+        handle_vpe_page(deseados)
     elif main_page == "VPF":
         handle_vpf_page(deseados)
     elif main_page == "PRE":
@@ -189,8 +188,8 @@ def handle_vpo_page(deseados):
         page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPO_Misiones_page")
         process_misiones_page("VPO", "Misiones", page, deseados, use_objetivo=True)
     elif view == "Consultorías":
-        st.header("VPO - Consultorías: Página en Desarrollo")
-        st.write("Funcionalidades específicas para Consultorías VPO.")
+        page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPO_Consultorias_page")
+        process_consultorias_page("VPO", "Consultorías", page, deseados)
 
 def handle_vpd_page(deseados):
     # Seleccionar Vista
@@ -213,6 +212,17 @@ def handle_vpf_page(deseados):
     elif view == "Consultorías":
         page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPF_Consultorias_page")
         process_consultorias_page("VPF", "Consultorías", page, deseados)
+
+def handle_vpe_page(deseados):
+    # Seleccionar Vista
+    view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPE_view")
+
+    if view == "Misiones":
+        page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPE_Misiones_page")
+        process_misiones_page("VPE", "Misiones", page, deseados, use_objetivo=False)
+    elif view == "Consultorías":
+        page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPE_Consultorias_page")
+        process_consultorias_page("VPE", "Consultorías", page, deseados)
 
 # Funciones para procesar Misiones y Consultorías
 def process_misiones_page(unit, tipo, page, deseados, use_objetivo):

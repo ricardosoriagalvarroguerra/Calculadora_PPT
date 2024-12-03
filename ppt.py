@@ -187,7 +187,7 @@ def handle_vpo_page(deseados):
 
     if view == "Misiones":
         page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPO_Misiones_page")
-        process_misiones_page("VPO", "Misiones", page, deseados)
+        process_misiones_page("VPO", "Misiones", page, deseados, use_objetivo=True)
     elif view == "Consultorías":
         st.header("VPO - Consultorías: Página en Desarrollo")
         st.write("Funcionalidades específicas para Consultorías VPO.")
@@ -198,7 +198,7 @@ def handle_vpd_page(deseados):
 
     if view == "Misiones":
         page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPD_Misiones_page")
-        process_misiones_page("VPD", "Misiones", page, deseados)
+        process_misiones_page("VPD", "Misiones", page, deseados, use_objetivo=False)
     elif view == "Consultorías":
         page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPD_Consultorias_page")
         process_consultorias_page("VPD", "Consultorías", page, deseados)
@@ -209,13 +209,13 @@ def handle_vpf_page(deseados):
 
     if view == "Misiones":
         page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPF_Misiones_page")
-        process_misiones_page("VPF", "Misiones", page, deseados)
+        process_misiones_page("VPF", "Misiones", page, deseados, use_objetivo=False)
     elif view == "Consultorías":
         page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPF_Consultorias_page")
         process_consultorias_page("VPF", "Consultorías", page, deseados)
 
 # Funciones para procesar Misiones y Consultorías
-def process_misiones_page(unit, tipo, page, deseados):
+def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
     file_path = 'BDD_Ajuste.xlsx'
     sheet_name = f"Misiones_{unit}"
     cache_file = f'cache/{unit}_{tipo}_DPP2025.csv'
@@ -224,7 +224,9 @@ def process_misiones_page(unit, tipo, page, deseados):
     # Función para procesar el DataFrame
     def process_misiones_df(df, sheet_name):
         required_columns = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
-                            'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Objetivo']
+                            'Alojamiento', 'Per-diem y Otros', 'Movilidad']
+        if use_objetivo:
+            required_columns.append('Objetivo')
         for col in required_columns:
             if col not in df.columns:
                 st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
@@ -266,7 +268,7 @@ def process_misiones_page(unit, tipo, page, deseados):
         display_misiones_requerimiento(df, unit)
     elif page == "DPP 2025":
         desired_total = deseados[unit][tipo]
-        edit_misiones_dpp(df, unit, desired_total, tipo)
+        edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo)
 
 def process_consultorias_page(unit, tipo, page, deseados):
     file_path = 'BDD_Ajuste.xlsx'
@@ -337,7 +339,7 @@ def display_misiones_requerimiento(df, unit):
         height=400
     )
 
-def edit_misiones_dpp(df, unit, desired_total, tipo):
+def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
     st.header(f"{unit} - Misiones: DPP 2025")
     st.subheader(f"Monto Total Deseado: {desired_total:,.0f} USD")
     st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto total deseado.")
@@ -384,7 +386,9 @@ def edit_misiones_dpp(df, unit, desired_total, tipo):
     edited_df = pd.DataFrame(grid_response['data'])
 
     essential_cols = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
-                      'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Objetivo', 'Total']
+                      'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
+    if use_objetivo:
+        essential_cols.append('Objetivo')
     for col in essential_cols:
         if col not in edited_df.columns:
             st.error(f"La columna '{col}' está ausente en los datos editados.")

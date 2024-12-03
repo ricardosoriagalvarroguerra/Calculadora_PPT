@@ -247,6 +247,17 @@ def handle_pre_page(deseados):
         page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="PRE_Consultorias_page")
         process_consultorias_page("PRE", "Consultorías", page, deseados)
 
+def handle_vpe_page(deseados):
+    # Seleccionar Vista
+    view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPE_view")
+
+    if view == "Misiones":
+        page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPE_Misiones_page")
+        process_misiones_page("VPE", "Misiones", page, deseados, use_objetivo=False)
+    elif view == "Consultorías":
+        page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPE_Consultorias_page")
+        process_consultorias_page("VPE", "Consultorías", page, deseados)
+
 # Funciones para procesar Misiones y Consultorías
 def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
     file_path = 'BDD_Ajuste.xlsx'
@@ -673,84 +684,6 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
     edited_df['Total'] = edited_df['Total'].round(0)
     csv = edited_df.to_csv(index=False).encode('utf-8')
     st.download_button(label="Descargar CSV", data=csv, file_name=f"tabla_modificada_{tipo.lower()}_{unit.lower()}.csv", mime="text/csv")
-
-# Funciones para mostrar y editar datos de Misiones y Consultorías
-def display_misiones_requerimiento(df, unit):
-    st.header(f"{unit} - Misiones: Requerimiento del área")
-    st.subheader("Tabla Completa - Misiones")
-    if unit == "VPE" or unit == "PRE":
-        st.dataframe(
-            df.style.format({
-                "País": "{}",
-                "Operación": "{}",
-                "PRE o VP": "{}",
-                "Cantidad de Funcionarios": "{:.0f}",
-                "Días": "{:.0f}",
-                "Costo de Pasaje": "{:,.0f}",
-                "Alojamiento": "{:,.0f}",
-                "Per-diem y Otros": "{:,.0f}",
-                "Movilidad": "{:,.0f}",
-                "Total": "{:,.0f}",
-                "Area imputacion": "{}"
-            }),
-            height=400
-        )
-    else:
-        st.dataframe(
-            df.style.format({
-                "Cantidad de Funcionarios": "{:.0f}",
-                "Días": "{:.0f}",
-                "Costo de Pasaje": "{:,.0f}",
-                "Alojamiento": "{:,.0f}",
-                "Per-diem y Otros": "{:,.0f}",
-                "Movilidad": "{:,.0f}",
-                "Total": "{:,.0f}"
-            }),
-            height=400
-        )
-
-def display_consultorias_requerimiento(df, unit):
-    st.header(f"{unit} - Consultorías: Requerimiento del área")
-    st.subheader("Tabla Completa - Consultorías")
-    if unit == "VPE" or unit == "PRE":
-        st.dataframe(
-            df.style.format({
-                "Cargo": "{}",
-                "PRE/AREA": "{}",
-                "Nº": "{:.0f}",
-                "Monto mensual": "{:,.0f}",
-                "cantidad meses": "{:.0f}",
-                "Total": "{:,.0f}",
-                "Area imputacion": "{}"
-            }),
-            height=400
-        )
-    elif unit == "VPO":
-        st.dataframe(
-            df.style.format({
-                "Cargo": "{}",
-                "Nº": "{:.0f}",
-                "Monto mensual": "{:,.0f}",
-                "cantidad meses": "{:.0f}",
-                "Total": "{:,.0f}",
-                "Observaciones": "{}",
-                "Objetivo": "{}",
-                "tipo": "{}"
-            }),
-            height=400
-        )
-    else:
-        st.dataframe(
-            df.style.format({
-                "Cargo": "{}",
-                f"{unit}/AREA": "{}",
-                "Nº": "{:.0f}",
-                "Monto mensual": "{:,.0f}",
-                "cantidad meses": "{:.0f}",
-                "Total": "{:,.0f}"
-            }),
-            height=400
-        )
 
 if __name__ == "__main__":
     main()

@@ -17,14 +17,6 @@ def calculate_total_consultorias(row):
 def calculate_total_vpe(row):
     return round(row['Suma de MONTO'])
 
-# Función de cálculo para PRE Misiones (Total ya está en la tabla)
-def calculate_total_pre_misiones(row):
-    return row['Total']  # Ya está calculado
-
-# Función de cálculo para PRE Consultorías (Total ya está en la tabla)
-def calculate_total_pre_consultorias(row):
-    return row['Total']  # Ya está calculado
-
 # Configuración de la página
 st.set_page_config(page_title="Presupuesto", layout="wide")
 
@@ -333,10 +325,13 @@ def process_consultorias_page(unit, tipo, page, deseados):
         if unit == "VPE" or unit == "PRE":
             # Columnas específicas para VPE y PRE Consultorías
             required_columns = ['Cargo', 'PRE/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Area imputacion']
+        elif unit == "VPO":
+            # Columnas específicas para VPO Consultorías
+            required_columns = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Observaciones', 'Objetivo', 'tipo']
         else:
             # Columnas para otras unidades
             required_columns = ['Cargo', f"{unit}/AREA", 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
-        
+
         for col in required_columns:
             if col not in df.columns:
                 st.error(f"La columna '{col}' no existe en la hoja '{sheet_name}'.")
@@ -345,7 +340,12 @@ def process_consultorias_page(unit, tipo, page, deseados):
         if unit == "VPE" or unit == "PRE":
             # Para PRE, asumimos que 'Total' ya está calculado
             df['Total'] = pd.to_numeric(df['Total'].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+        elif unit == "VPO":
+            # Para VPO Consultorías, 'Total' ya está calculado o debe ser recalculado
+            if 'Total' not in df.columns or df['Total'].sum() == 0:
+                df['Total'] = df.apply(calculate_total_consultorias, axis=1)
         else:
+            # Para otras unidades, recalculamos 'Total' si es necesario
             numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
             for col in numeric_columns:
                 if col in df.columns:
@@ -431,6 +431,20 @@ def display_consultorias_requerimiento(df, unit):
                 "cantidad meses": "{:.0f}",
                 "Total": "{:,.0f}",
                 "Area imputacion": "{}"
+            }),
+            height=400
+        )
+    elif unit == "VPO":
+        st.dataframe(
+            df.style.format({
+                "Cargo": "{}",
+                "Nº": "{:.0f}",
+                "Monto mensual": "{:,.0f}",
+                "cantidad meses": "{:.0f}",
+                "Total": "{:,.0f}",
+                "Observaciones": "{}",
+                "Objetivo": "{}",
+                "tipo": "{}"
             }),
             height=400
         )
@@ -562,6 +576,11 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
         editable_columns = ['Monto mensual', 'cantidad meses']  # Permitir editar estos campos
         gb.configure_columns(editable_columns, editable=True, type=['numericColumn'], valueFormatter="Math.round(x).toLocaleString()")
         # 'Total' ya está calculado y no editable
+    elif unit == "VPO":
+        # Configurar columnas para VPO Consultorías
+        editable_columns = ['Nº', 'Monto mensual', 'cantidad meses']
+        gb.configure_columns(editable_columns, editable=True, type=['numericColumn'], valueFormatter="Math.round(x).toLocaleString()")
+        # 'Total' ya está calculado y no editable
     else:
         # Configurar columnas para otras unidades
         numeric_columns_aggrid = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
@@ -601,10 +620,13 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
     if unit == "VPE" or unit == "PRE":
         # Validar columnas para VPE y PRE Consultorías
         essential_cols = ['Cargo', 'PRE/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Area imputacion']
+    elif unit == "VPO":
+        # Validar columnas para VPO Consultorías
+        essential_cols = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Observaciones', 'Objetivo', 'tipo']
     else:
         # Validar columnas para otras unidades
         essential_cols = ['Cargo', f"{unit}/AREA", 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
-    
+
     for col in essential_cols:
         if col not in edited_df.columns:
             st.error(f"La columna '{col}' está ausente en los datos editados.")
@@ -613,6 +635,16 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
     if unit == "VPE" or unit == "PRE":
         # Convertir columnas numéricas a numérico
         numeric_columns = ['Monto mensual', 'cantidad meses']
+        for col in numeric_columns:
+            if col in edited_df.columns:
+                edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+            else:
+                st.error(f"La columna '{col}' está ausente en los datos editados.")
+                st.stop()
+        # 'Total' ya está calculado
+    elif unit == "VPO":
+        # Convertir columnas numéricas a numérico
+        numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses']
         for col in numeric_columns:
             if col in edited_df.columns:
                 edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
@@ -690,6 +722,20 @@ def display_consultorias_requerimiento(df, unit):
                 "cantidad meses": "{:.0f}",
                 "Total": "{:,.0f}",
                 "Area imputacion": "{}"
+            }),
+            height=400
+        )
+    elif unit == "VPO":
+        st.dataframe(
+            df.style.format({
+                "Cargo": "{}",
+                "Nº": "{:.0f}",
+                "Monto mensual": "{:,.0f}",
+                "cantidad meses": "{:.0f}",
+                "Total": "{:,.0f}",
+                "Observaciones": "{}",
+                "Objetivo": "{}",
+                "tipo": "{}"
             }),
             height=400
         )

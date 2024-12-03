@@ -63,14 +63,13 @@ def create_consolidado(deseados):
                 deseado = deseados[unidad][tipo]
                 ajuste = deseado - actual
                 row[f"{tipo} - Actual"] = actual
-                row[f"{tipo} - DPP2025"] = ajuste
-                # Eliminamos la columna "Deseado" del consolidado
-                # row[f"{tipo} - Deseado"] = deseado  # Esta línea se elimina
+                row[f"{tipo} - Monto DPP 2025"] = deseado
+                row[f"{tipo} - Ajuste"] = ajuste
             else:
                 deseado = deseados[unidad][tipo]
                 row[f"{tipo} - Actual"] = 0
-                row[f"{tipo} - DPP2025"] = deseado
-                # row[f"{tipo} - Deseado"] = deseado  # Esta línea se elimina
+                row[f"{tipo} - Monto DPP 2025"] = deseado
+                row[f"{tipo} - Ajuste"] = deseado
             if tipo == 'Misiones':
                 data_misiones.append(row)
             else:
@@ -83,25 +82,27 @@ def create_consolidado(deseados):
         color = 'background-color: #90ee90' if val == 0 else ''
         return color
 
-    # Solo incluimos "Actual" y "DPP2025" para Misiones
-    consolidado_misiones_display = consolidado_misiones_df[['Unidad Organizacional', "Misiones - Actual", "Misiones - DPP2025"]]
-    styled_misiones_df = consolidado_misiones_display.style.applymap(highlight_zero, subset=["Misiones - DPP2025"])
+    # Solo incluimos "Actual", "Monto DPP 2025" y "Ajuste" para Misiones
+    consolidado_misiones_display = consolidado_misiones_df[['Unidad Organizacional', "Misiones - Actual", "Misiones - Monto DPP 2025", "Misiones - Ajuste"]]
+    styled_misiones_df = consolidado_misiones_display.style.applymap(highlight_zero, subset=["Misiones - Ajuste"])
     styled_misiones_df = styled_misiones_df.format(
         "{:,.0f}", 
         subset=[
             "Misiones - Actual",
-            "Misiones - DPP2025"
+            "Misiones - Monto DPP 2025",
+            "Misiones - Ajuste"
         ]
     )
 
-    # Solo incluimos "Actual" y "DPP2025" para Consultorías
-    consolidado_consultorias_display = consolidado_consultorias_df[['Unidad Organizacional', "Consultorías - Actual", "Consultorías - DPP2025"]]
-    styled_consultorias_df = consolidado_consultorias_display.style.applymap(highlight_zero, subset=["Consultorías - DPP2025"])
+    # Solo incluimos "Actual", "Monto DPP 2025" y "Ajuste" para Consultorías
+    consolidado_consultorias_display = consolidado_consultorias_df[['Unidad Organizacional', "Consultorías - Actual", "Consultorías - Monto DPP 2025", "Consultorías - Ajuste"]]
+    styled_consultorias_df = consolidado_consultorias_display.style.applymap(highlight_zero, subset=["Consultorías - Ajuste"])
     styled_consultorias_df = styled_consultorias_df.format(
         "{:,.0f}", 
         subset=[
             "Consultorías - Actual",
-            "Consultorías - DPP2025"
+            "Consultorías - Monto DPP 2025",
+            "Consultorías - Ajuste"
         ]
     )
 
@@ -637,6 +638,7 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
 
         edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
 
+    # Calcular la suma total y la diferencia con el monto DPP 2025
     total_sum = edited_df['Total'].sum()
     difference = desired_total - total_sum
 
@@ -784,6 +786,7 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
 
         edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
 
+    # Calcular la suma total y la diferencia con el monto DPP 2025
     total_sum = edited_df['Total'].sum()
     difference = desired_total - total_sum
 

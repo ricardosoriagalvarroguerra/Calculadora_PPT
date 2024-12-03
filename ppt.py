@@ -43,7 +43,6 @@ def save_to_cache(df, unidad, tipo):
     cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
     df.to_csv(cache_file, index=False)
 
-# Función para crear el consolidado dividido en Misiones y Consultorías
 def create_consolidado(deseados):
     st.header("")
     cache_dir = 'cache'
@@ -133,7 +132,38 @@ def crear_dona(df, nombres, valores, titulo, color_map, hole=0.5, height=300, ma
     )
     return fig
 
-# Función principal
+# Función para manejar la página de VPO
+def handle_vpo_page(deseados):
+    view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPO_view")
+    if view == "Misiones":
+        process_misiones_page("VPO", "Misiones", "DPP 2025", deseados, use_objetivo=True)
+    elif view == "Consultorías":
+        process_consultorias_page("VPO", "Consultorías", "DPP 2025", deseados)
+
+# Función para manejar la página de VPD
+def handle_vpd_page(deseados):
+    view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPD_view")
+    if view == "Misiones":
+        process_misiones_page("VPD", "Misiones", "DPP 2025", deseados, use_objetivo=False)
+    elif view == "Consultorías":
+        process_consultorias_page("VPD", "Consultorías", "DPP 2025", deseados)
+
+# Función para manejar la página de VPE
+def handle_vpe_page(deseados):
+    view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPE_view")
+    if view == "Misiones":
+        process_misiones_page("VPE", "Misiones", "DPP 2025", deseados, use_objetivo=False)
+    elif view == "Consultorías":
+        process_consultorias_page("VPE", "Consultorías", "DPP 2025", deseados)
+
+# Función para manejar la página de VPF
+def handle_vpf_page(deseados):
+    view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPF_view")
+    if view == "Misiones":
+        process_misiones_page("VPF", "Misiones", "DPP 2025", deseados, use_objetivo=False)
+    elif view == "Consultorías":
+        process_consultorias_page("VPF", "Consultorías", "DPP 2025", deseados)
+
 def main():
     # Sidebar para navegación
     st.sidebar.title("Navegación")
@@ -178,46 +208,6 @@ def main():
         st.write("Aquí puedes agregar las funcionalidades específicas para PRE.")
     elif main_page == "Consolidado":
         create_consolidado(deseados)
-
-# Función para manejar la página de VPO
-def handle_vpo_page(deseados):
-    view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPO_view")
-    if view == "Misiones":
-        st.header("VPO - Misiones")
-        # Código completo de funcionalidades de Misiones para VPO
-    elif view == "Consultorías":
-        st.header("VPO - Consultorías")
-        # Código completo de funcionalidades de Consultorías para VPO
-
-# Función para manejar la página de VPD
-def handle_vpd_page(deseados):
-    view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPD_view")
-    if view == "Misiones":
-        st.header("VPD - Misiones")
-        # Código completo de funcionalidades de Misiones para VPD
-    elif view == "Consultorías":
-        st.header("VPD - Consultorías")
-        # Código completo de funcionalidades de Consultorías para VPD
-
-# Función para manejar la página de VPE
-def handle_vpe_page(deseados):
-    view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPE_view")
-    if view == "Misiones":
-        st.header("VPE - Misiones")
-        # Código completo de funcionalidades de Misiones para VPE
-    elif view == "Consultorías":
-        st.header("VPE - Consultorías")
-        # Código completo de funcionalidades de Consultorías para VPE
-
-# Función para manejar la página de VPF
-def handle_vpf_page(deseados):
-    view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPF_view")
-    if view == "Misiones":
-        st.header("VPF - Misiones")
-        # Código completo de funcionalidades de Misiones para VPF
-    elif view == "Consultorías":
-        st.header("VPF - Consultorías")
-        # Código completo de funcionalidades de Consultorías para VPF
 
 if __name__ == "__main__":
     main()

@@ -362,7 +362,7 @@ def display_misiones_requerimiento(df, unit):
     if unit == "VPE":
         st.dataframe(
             df.style.format({
-                "ÍTEM PRESUPUESTO": "{:.0f}",
+                "ÍTEM PRESUPUESTO": "{}",
                 "OFICINA": "{}",
                 "UNID. ORG.": "{}",
                 "ACCIONES": "{}",
@@ -496,7 +496,7 @@ def display_consultorias_requerimiento(df, unit):
     if unit == "VPE":
         st.dataframe(
             df.style.format({
-                "ÍTEM PRESUPUESTO": "{:.0f}",
+                "ÍTEM PRESUPUESTO": "{}",
                 "OFICINA": "{}",
                 "UNID. ORG.": "{}",
                 "ACCIONES": "{}",

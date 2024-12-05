@@ -286,7 +286,7 @@ def handle_consolidado_page():
             2431332,         # Gasto en Personal
             408174,          # Programa Comunicaciones
             8500,            # Gastos Administrativos
-            416674          # Gastos Totales
+            416674           # Gastos Totales
         ]
     }
 
@@ -297,8 +297,6 @@ def handle_consolidado_page():
         for index, row in presidencia_ejecutiva_df.iterrows():
             if row['Concepto'] == "Posiciones":
                 st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']}")
-            elif row['Concepto'] == "Gastos Totales":
-                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
             else:
                 st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
         st.markdown("---")  # Línea divisoria
@@ -307,6 +305,44 @@ def handle_consolidado_page():
             ~presidencia_ejecutiva_df['Concepto'].isin(["Gastos Totales", "Posiciones"])
         ]['Monto (USD)'].sum()
         st.markdown(f"**Total Presupuesto Presidencia Ejecutiva:** {total_presupuesto_presidencia:,.0f} USD")
+
+    # Datos para la sección Vicepresidencia Ejecutiva
+    vicepresidencia_ejecutiva_data = {
+        "Concepto": [
+            "Posiciones",
+            "Misiones de Servicio",
+            "Servicios Profesionales a Término",
+            "Gastos en Personal",
+            "Programa de Comunicaciones",
+            "Gastos Administrativos",
+            "Gastos Totales"
+        ],
+        "Monto (USD)": [
+            21,              # Posiciones (count)
+            28244,           # Misiones de Servicio
+            179466,          # Servicios Profesionales a Término
+            2450804,         # Gastos en Personal
+            5000,            # Programa de Comunicaciones
+            1037395,         # Gastos Administrativos
+            1042395          # Gastos Totales
+        ]
+    }
+
+    vicepresidencia_ejecutiva_df = pd.DataFrame(vicepresidencia_ejecutiva_data)
+
+    # Mostrar los ítems y el total dentro de la misma sección expandible
+    with st.expander("Vicepresidencia Ejecutiva"):
+        for index, row in vicepresidencia_ejecutiva_df.iterrows():
+            if row['Concepto'] == "Posiciones":
+                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']}")
+            else:
+                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
+        st.markdown("---")  # Línea divisoria
+        # Calcular Total Presupuesto excluyendo "Gastos Totales" y "Posiciones"
+        total_presupuesto_vicepresidencia = vicepresidencia_ejecutiva_df[
+            ~vicepresidencia_ejecutiva_df['Concepto'].isin(["Gastos Totales", "Posiciones"])
+        ]['Monto (USD)'].sum()
+        st.markdown(f"**Total Presupuesto Vicepresidencia Ejecutiva:** {total_presupuesto_vicepresidencia:,.0f} USD")
 
 # Funciones para procesar Misiones y Consultorías
 def process_misiones_page(unit, tipo, page, deseados, use_objetivo):

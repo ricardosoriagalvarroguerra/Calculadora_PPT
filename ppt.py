@@ -252,7 +252,7 @@ def handle_pre_page(deseados):
 def handle_consolidado_page():
     st.header("Resumen por Unidad Organizacional")
 
-    # Datos para la tabla Gobernanza
+    # Datos para la sección Gobernanza
     gobernanza_data = {
         "Departamento": ["Asamblea de gobernadores", "Directorio Ejecutivo", "Tribunal Administrativo"],
         "Monto (USD)": [97284, 263610, 50700]
@@ -264,11 +264,11 @@ def handle_consolidado_page():
     with st.expander("Gobernanza"):
         for index, row in gobernanza_df.iterrows():
             st.markdown(f"**{row['Departamento']}:** {row['Monto (USD)']:,.0f} USD")
-    
-    # Mostrar total de presupuesto
-    total_presupuesto = gobernanza_df['Monto (USD)'].sum()
-    st.subheader("Total de Presupuesto")
-    st.metric(label="Total de Presupuesto (USD)", value=f"{total_presupuesto:,.0f}")
+
+    # Mostrar total de presupuesto dentro de otro expander
+    with st.expander("Total Presupuesto"):
+        total_presupuesto = gobernanza_df['Monto (USD)'].sum()
+        st.markdown(f"**Total Presupuesto:** {total_presupuesto:,.0f} USD")
 
 # Funciones para procesar Misiones y Consultorías
 def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
@@ -649,6 +649,154 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
             edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
 
         edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
+
+    # Calcular la suma total y la diferencia con el monto DPP 2025
+    total_sum = edited_df['Total'].sum()
+    difference = desired_total - total_sum
+
+    col1, col2 = st.columns(2)
+    col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
+    col2.metric("Diferencia con el Monto DPP 2025 (USD)", f"{difference:,.0f}")
+
+    save_to_cache(edited_df, unit, tipo)
+
+    st.subheader("Descargar Tabla Modificada")
+    edited_df['Total'] = edited_df['Total'].round(0)
+    csv = edited_df.to_csv(index=False).encode('utf-8')
+    st.download_button(label="Descargar CSV", data=csv, file_name=f"tabla_modificada_{tipo.lower()}_{unit.lower()}.csv", mime="text/csv")
+
+def edit_consultorias_dpp(df, unit, desired_total, tipo):
+    st.header(f"{unit} - Consultorías: DPP 2025")
+    st.subheader(f"Monto DPP 2025: {desired_total:,.0f} USD")
+    st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto DPP 2025.")
+
+    gb = GridOptionsBuilder.from_dataframe(df)
+    gb.configure_default_column(editable=True, groupable=True)
+
+    if unit == "VPE":
+        # Configurar columnas para VPE Consultorías
+        editable_columns = ['Suma de MONTO']
+        gb.configure_columns(editable_columns, editable=True, type=['numericColumn'], valueFormatter="Math.round(x).toLocaleString()")
+        # 'Total' ya está calculado y no editable
+    elif unit == "PRE":
+        # Configurar columnas para PRE Consultorías
+        editable_columns = ['Nº', 'Monto mensual', 'cantidad meses']
+        for col in editable_columns:
+            gb.configure_column(
+                col,
+                editable=True,
+                type=['numericColumn'],
+                valueFormatter="Math.round(x).toLocaleString()"
+            )
+        # Recalcular 'Total'
+        gb.configure_column('Total', editable=False, valueGetter=JsCode("""
+            function(params) {
+                return Math.round(
+                    Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses'])
+                );
+            }
+        """))
+    elif unit == "VPO":
+        # Configurar columnas para VPO Consultorías
+        editable_columns = ['Nº', 'Monto mensual', 'cantidad meses']
+        for col in editable_columns:
+            gb.configure_column(
+                col,
+                editable=True,
+                type=['numericColumn'],
+                valueFormatter="Math.round(x).toLocaleString()"
+            )
+        # Recalcular 'Total'
+        gb.configure_column('Total', editable=False, valueGetter=JsCode("""
+            function(params) {
+                return Math.round(
+                    Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses'])
+                );
+            }
+        """))
+    else:
+        # Configurar columnas para otras unidades
+        numeric_columns_aggrid = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
+        for col in numeric_columns_aggrid:
+            gb.configure_column(
+                col,
+                type=['numericColumn'],
+                valueFormatter="Math.round(x).toLocaleString()"
+            )
+
+        gb.configure_column('Total', editable=False, valueGetter=JsCode("""
+            function(params) {
+                return Math.round(
+                    Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses'])
+                );
+            }
+        """))
+
+    gb.configure_grid_options(domLayout='normal')
+    grid_options = gb.build()
+
+    grid_response = AgGrid(
+        df,
+        gridOptions=grid_options,
+        data_return_mode=DataReturnMode.FILTERED,
+        update_mode='MODEL_CHANGED',
+        fit_columns_on_grid_load=False,
+        height=400,
+        width='100%',
+        enable_enterprise_modules=False,
+        allow_unsafe_jscode=True,
+        theme='alpine'
+    )
+
+    edited_df = pd.DataFrame(grid_response['data'])
+
+    if unit == "VPE":
+        # Validar columnas para VPE Consultorías
+        essential_cols = ['ÍTEM PRESUPUESTO', 'OFICINA', 'UNID. ORG.', 'ACCIONES', 'CATEGORÍA', 'SUBCATEGORÍA', 'Suma de MONTO', 'Total']
+    elif unit == "PRE":
+        # Validar columnas para PRE Consultorías
+        essential_cols = ['Cargo', 'PRE/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Area imputacion']
+    elif unit == "VPO":
+        # Validar columnas para VPO Consultorías
+        essential_cols = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Observaciones', 'Objetivo', 'tipo']
+    else:
+        # Validar columnas para otras unidades
+        essential_cols = ['Cargo', f"{unit}/AREA", 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
+
+    for col in essential_cols:
+        if col not in edited_df.columns:
+            st.error(f"La columna '{col}' está ausente en los datos editados.")
+            st.stop()
+
+    if unit == "VPE":
+        # Convertir columnas numéricas a numérico
+        numeric_columns = ['Suma de MONTO']
+        for col in numeric_columns:
+            if col in edited_df.columns:
+                edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+            else:
+                st.error(f"La columna '{col}' está ausente en los datos editados.")
+                st.stop()
+        # Recalcular 'Total'
+        edited_df['Total'] = edited_df.apply(lambda row: row['Suma de MONTO'], axis=1)
+    elif unit == "PRE":
+        # Convertir columnas numéricas a numérico
+        numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses']
+        for col in numeric_columns:
+            if col in edited_df.columns:
+                edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+            else:
+                st.error(f"La columna '{col}' está ausente en los datos editados.")
+                st.stop()
+        # Recalcular 'Total'
+        edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
+    else:
+        # Convertir columnas numéricas a numérico
+        numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
+        for col in numeric_columns:
+            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+
+        edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
 
     # Calcular la suma total y la diferencia con el monto DPP 2025
     total_sum = edited_df['Total'].sum()

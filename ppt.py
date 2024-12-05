@@ -265,8 +265,45 @@ def handle_consolidado_page():
         for index, row in gobernanza_df.iterrows():
             st.markdown(f"**{row['Departamento']}:** {row['Monto (USD)']:,.0f} USD")
         st.markdown("---")  # Línea divisoria
-        total_presupuesto = gobernanza_df['Monto (USD)'].sum()
-        st.markdown(f"**Total Presupuesto:** {total_presupuesto:,.0f} USD")
+        total_presupuesto_gobernanza = gobernanza_df['Monto (USD)'].sum()
+        st.markdown(f"**Total Presupuesto:** {total_presupuesto_gobernanza:,.0f} USD")
+
+    # Datos para la sección Presidencia Ejecutiva
+    presidencia_ejecutiva_data = {
+        "Concepto": [
+            "Posiciones",
+            "Misiones de Servicio",
+            "Servicios Profesionales a Término",
+            "Gasto en Personal",
+            "Programa Comunicaciones",
+            "Gastos Administrativos",
+            "Gastos Totales"
+        ],
+        "Monto (USD)": [
+            15,              # Posiciones (count)
+            80168,           # Misiones de Servicio
+            338372,          # Servicios Profesionales a Término
+            2431332,         # Gasto en Personal
+            408174,          # Programa Comunicaciones
+            8500,            # Gastos Administrativos
+            3266546          # Gastos Totales
+        ]
+    }
+
+    presidencia_ejecutiva_df = pd.DataFrame(presidencia_ejecutiva_data)
+
+    # Mostrar los ítems y el total dentro de la misma sección expandible
+    with st.expander("Presidencia Ejecutiva"):
+        for index, row in presidencia_ejecutiva_df.iterrows():
+            if row['Concepto'] == "Posiciones":
+                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']}")
+            elif row['Concepto'] == "Gastos Totales":
+                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
+            else:
+                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
+        st.markdown("---")  # Línea divisoria
+        total_presupuesto_presidencia = presidencia_ejecutiva_df[presidencia_ejecutiva_df['Concepto'] != "Gastos Totales"]['Monto (USD)'].sum() + presidencia_ejecutiva_df[presidencia_ejecutiva_df['Concepto'] == "Gastos Totales"]['Monto (USD)'].values[0]
+        st.markdown(f"**Total Presupuesto:** {total_presupuesto_presidencia:,.0f} USD")
 
 # Funciones para procesar Misiones y Consultorías
 def process_misiones_page(unit, tipo, page, deseados, use_objetivo):

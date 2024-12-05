@@ -257,14 +257,16 @@ def handle_consolidado_page():
         "Departamento": ["Asamblea de gobernadores", "Directorio Ejecutivo", "Tribunal Administrativo"],
         "Monto (USD)": [97284, 263610, 50700]
     }
+
     gobernanza_df = pd.DataFrame(gobernanza_data)
 
-    # Mostrar tabla Gobernanza dentro de un expander
+    # Mostrar cada ítem como texto dentro de un expander
     with st.expander("Gobernanza"):
-        st.dataframe(gobernanza_df.style.format({"Monto (USD)": "{:,.0f}"}), height=300)
-
+        for index, row in gobernanza_df.iterrows():
+            st.markdown(f"**{row['Departamento']}:** {row['Monto (USD)']:,.0f} USD")
+    
     # Mostrar total de presupuesto
-    total_presupuesto = 411600
+    total_presupuesto = gobernanza_df['Monto (USD)'].sum()
     st.subheader("Total de Presupuesto")
     st.metric(label="Total de Presupuesto (USD)", value=f"{total_presupuesto:,.0f}")
 

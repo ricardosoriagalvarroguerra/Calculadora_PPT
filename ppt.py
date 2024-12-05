@@ -344,6 +344,40 @@ def handle_consolidado_page():
         ]['Monto (USD)'].sum()
         st.markdown(f"**Total Presupuesto Vicepresidencia Ejecutiva:** {total_presupuesto_vicepresidencia:,.0f} USD")
 
+    # Datos para la sección Vicepresidencia de Desarrollo Estratégico
+    vicepresidencia_de_desarrollo_estrategico_data = {
+        "Concepto": [
+            "Posiciones",
+            "Misiones de Servicio",
+            "Servicios Profesionales a Término",
+            "Gastos en Personal",
+            "Programa de Comunicaciones",
+            "Total de Gastos"
+        ],
+        "Monto (USD)": [
+            10,              # Posiciones (count)
+            203960,          # Misiones de Servicio
+            323160,          # Servicios Profesionales a Término
+            1636433,         # Gastos en Personal
+            13600,           # Programa de Comunicaciones
+            13600            # Total de Gastos
+        ]
+    }
+
+    vicepresidencia_de_desarrollo_estrategico_df = pd.DataFrame(vicepresidencia_de_desarrollo_estrategico_data)
+
+    # Mostrar los ítems y el total dentro de la misma sección expandible
+    with st.expander("Vicepresidencia de Desarrollo Estratégico"):
+        for index, row in vicepresidencia_de_desarrollo_estrategico_df.iterrows():
+            if row['Concepto'] == "Posiciones":
+                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']}")
+            else:
+                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
+        st.markdown("---")  # Línea divisoria
+        # Mostrar Total Presupuesto fuera de la tabla
+        total_presupuesto_de_desarrollo = 2177163  # Valor proporcionado por el usuario
+        st.markdown(f"**Total Presupuesto Vicepresidencia de Desarrollo Estratégico:** {total_presupuesto_de_desarrollo:,.0f} USD")
+
 # Funciones para procesar Misiones y Consultorías
 def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
     file_path = 'BDD_Ajuste.xlsx'

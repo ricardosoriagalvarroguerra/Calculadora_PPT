@@ -141,7 +141,7 @@ def crear_dona(df, nombres, valores, titulo, color_map, hole=0.5, height=300, ma
 def main():
     # Sidebar para navegación
     st.sidebar.title("Navegación")
-    main_page = st.sidebar.selectbox("Selecciona una página principal:", ("VPO", "VPD", "VPE", "VPF", "PRE", "Consolidado"))
+    main_page = st.sidebar.selectbox("Selecciona una página principal:", ("VPO", "VPD", "VPE", "VPF", "PRE", "Coordinación", "Consolidado"))
     st.title(main_page)
 
     # Definir los montos deseados para cada sección
@@ -199,8 +199,10 @@ def main():
         handle_vpf_page(deseados)
     elif main_page == "PRE":
         handle_pre_page(deseados)
-    elif main_page == "Consolidado":
+    elif main_page == "Coordinación":
         create_consolidado(deseados)
+    elif main_page == "Consolidado":
+        handle_consolidado_page()
 
 # Funciones específicas para cada unidad
 def handle_vpo_page(deseados):
@@ -247,16 +249,24 @@ def handle_pre_page(deseados):
         page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="PRE_Consultorias_page")
         process_consultorias_page("PRE", "Consultorías", page, deseados)
 
-def handle_vpe_page(deseados):
-    # Seleccionar Vista
-    view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPE_view")
+def handle_consolidado_page():
+    st.header("Resumen por Unidad Organizacional")
 
-    if view == "Misiones":
-        page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPE_Misiones_page")
-        process_misiones_page("VPE", "Misiones", page, deseados, use_objetivo=False)
-    elif view == "Consultorías":
-        page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPE_Consultorias_page")
-        process_consultorias_page("VPE", "Consultorías", page, deseados)
+    # Datos para la tabla Gobernanza
+    gobernanza_data = {
+        "Departamento": ["Asamblea de gobernadores", "Directorio Ejecutivo", "Tribunal Administrativo"],
+        "Monto (USD)": [97284, 263610, 50700]
+    }
+    gobernanza_df = pd.DataFrame(gobernanza_data)
+
+    # Mostrar tabla Gobernanza dentro de un expander
+    with st.expander("Gobernanza"):
+        st.dataframe(gobernanza_df.style.format({"Monto (USD)": "{:,.0f}"}), height=300)
+
+    # Mostrar total de presupuesto
+    total_presupuesto = 411600
+    st.subheader("Total de Presupuesto")
+    st.metric(label="Total de Presupuesto (USD)", value=f"{total_presupuesto:,.0f}")
 
 # Funciones para procesar Misiones y Consultorías
 def process_misiones_page(unit, tipo, page, deseados, use_objetivo):

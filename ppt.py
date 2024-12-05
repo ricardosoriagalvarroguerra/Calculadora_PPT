@@ -360,7 +360,7 @@ def handle_consolidado_page():
             323160,          # Servicios Profesionales a Término
             1636433,         # Gastos en Personal
             13600,           # Programa de Comunicaciones
-            13600            # Total de Gastos
+            677800           # Total de Gastos
         ]
     }
 
@@ -377,6 +377,42 @@ def handle_consolidado_page():
         # Mostrar Total Presupuesto fuera de la tabla
         total_presupuesto_de_desarrollo = 2177163  # Valor proporcionado por el usuario
         st.markdown(f"**Total Presupuesto Vicepresidencia de Desarrollo Estratégico:** {total_presupuesto_de_desarrollo:,.0f} USD")
+
+    # Datos para la sección Vicepresidencia de Operaciones y Países
+    vicepresidencia_operaciones_paises_data = {
+        "Concepto": [
+            "Posiciones",
+            "Misiones de Servicio",
+            "Servicios Profesionales a Término",
+            "Gastos en Personal",
+            "Programa de Comunicaciones",
+            "Gastos Administrativos",
+            "Total de Gastos"
+        ],
+        "Monto (USD)": [
+            33,              # Posiciones (count)
+            482865,          # Misiones de Servicio
+            580860,          # Servicios Profesionales a Término
+            4686208,         # Gastos en Personal
+            62200,           # Programa de Comunicaciones
+            615600,          # Gastos Administrativos
+            677800           # Total de Gastos
+        ]
+    }
+
+    vicepresidencia_operaciones_paises_df = pd.DataFrame(vicepresidencia_operaciones_paises_data)
+
+    # Mostrar los ítems y el total dentro de la misma sección expandible
+    with st.expander("Vicepresidencia de Operaciones y Países"):
+        for index, row in vicepresidencia_operaciones_paises_df.iterrows():
+            if row['Concepto'] == "Posiciones":
+                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']}")
+            else:
+                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
+        st.markdown("---")  # Línea divisoria
+        # Mostrar Total Presupuesto fuera de la tabla
+        total_presupuesto_operaciones_paises = 6862440  # Valor proporcionado por el usuario
+        st.markdown(f"**Total Presupuesto Vicepresidencia de Operaciones y Países:** {total_presupuesto_operaciones_paises:,.0f} USD")
 
 # Funciones para procesar Misiones y Consultorías
 def process_misiones_page(unit, tipo, page, deseados, use_objetivo):

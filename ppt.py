@@ -414,6 +414,38 @@ def handle_consolidado_page():
         total_presupuesto_operaciones_paises = 6862440  # Valor proporcionado por el usuario
         st.markdown(f"**Total Presupuesto Vicepresidencia de Operaciones y Países:** {total_presupuesto_operaciones_paises:,.0f} USD")
 
+    # Datos para la sección Vicepresidencia de Finanzas
+    vicepresidencia_finanzas_data = {
+        "Concepto": [
+            "Posiciones",
+            "Misiones de Servicio",
+            "Servicios Profesionales a Término",
+            "Gastos en Personal",
+            "Gastos Administrativos"
+        ],
+        "Monto (USD)": [
+            17,              # Posiciones (count)
+            179560,          # Misiones de Servicio
+            258450,          # Servicios Profesionales a Término
+            2329964,         # Gastos en Personal
+            731500           # Gastos Administrativos
+        ]
+    }
+
+    vicepresidencia_finanzas_df = pd.DataFrame(vicepresidencia_finanzas_data)
+
+    # Mostrar los ítems y el total dentro de la misma sección expandible
+    with st.expander("Vicepresidencia de Finanzas"):
+        for index, row in vicepresidencia_finanzas_df.iterrows():
+            if row['Concepto'] == "Posiciones":
+                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']}")
+            else:
+                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
+        st.markdown("---")  # Línea divisoria
+        # Mostrar Total Presupuesto fuera de la tabla
+        total_presupuesto_finanzas = 3499504  # Valor proporcionado por el usuario
+        st.markdown(f"**Total Presupuesto Vicepresidencia de Finanzas:** {total_presupuesto_finanzas:,.0f} USD")
+
 # Funciones para procesar Misiones y Consultorías
 def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
     file_path = 'BDD_Ajuste.xlsx'

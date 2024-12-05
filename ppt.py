@@ -266,7 +266,7 @@ def handle_consolidado_page():
             st.markdown(f"**{row['Departamento']}:** {row['Monto (USD)']:,.0f} USD")
         st.markdown("---")  # Línea divisoria
         total_presupuesto_gobernanza = gobernanza_df['Monto (USD)'].sum()
-        st.markdown(f"**Total Presupuesto:** {total_presupuesto_gobernanza:,.0f} USD")
+        st.markdown(f"**Total Presupuesto Gobernanza:** {total_presupuesto_gobernanza:,.0f} USD")
 
     # Datos para la sección Presidencia Ejecutiva
     presidencia_ejecutiva_data = {
@@ -286,7 +286,7 @@ def handle_consolidado_page():
             2431332,         # Gasto en Personal
             408174,          # Programa Comunicaciones
             8500,            # Gastos Administrativos
-            3266546          # Gastos Totales
+            416674          # Gastos Totales
         ]
     }
 
@@ -302,8 +302,11 @@ def handle_consolidado_page():
             else:
                 st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
         st.markdown("---")  # Línea divisoria
-        total_presupuesto_presidencia = presidencia_ejecutiva_df[presidencia_ejecutiva_df['Concepto'] != "Gastos Totales"]['Monto (USD)'].sum() + presidencia_ejecutiva_df[presidencia_ejecutiva_df['Concepto'] == "Gastos Totales"]['Monto (USD)'].values[0]
-        st.markdown(f"**Total Presupuesto:** {total_presupuesto_presidencia:,.0f} USD")
+        # Calcular Total Presupuesto excluyendo "Gastos Totales" y "Posiciones"
+        total_presupuesto_presidencia = presidencia_ejecutiva_df[
+            ~presidencia_ejecutiva_df['Concepto'].isin(["Gastos Totales", "Posiciones"])
+        ]['Monto (USD)'].sum()
+        st.markdown(f"**Total Presupuesto Presidencia Ejecutiva:** {total_presupuesto_presidencia:,.0f} USD")
 
 # Funciones para procesar Misiones y Consultorías
 def process_misiones_page(unit, tipo, page, deseados, use_objetivo):

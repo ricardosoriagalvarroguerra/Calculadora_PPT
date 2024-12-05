@@ -446,7 +446,51 @@ def handle_consolidado_page():
         total_presupuesto_finanzas = 3499504  # Valor proporcionado por el usuario
         st.markdown(f"**Total Presupuesto Vicepresidencia de Finanzas:** {total_presupuesto_finanzas:,.0f} USD")
 
-# Funciones para procesar Misiones y Consultorías
+    # Datos para la sección Total Presupuestado 2025
+    total_presupuestado_2025_data = {
+        "Concepto": [
+            "Posiciones",
+            "Gobernanza Institucional",
+            "Misiones de Servicio",
+            "Servicios Profesionales a Término",
+            "Gastos en Personal",
+            "Programa de Comunicaciones",
+            "Gastos Administrativos",
+            "Total Gastos",
+            "Total Presupuesto 2025"
+        ],
+        "Monto (USD)": [
+            96,              # Posiciones (count)
+            411594,          # Gobernanza Institucional
+            974797,          # Misiones de Servicio
+            1680318,         # Servicios Profesionales a Término
+            13534751,        # Gastos en Personal
+            489000,          # Programa de Comunicaciones
+            2392995,         # Gastos Administrativos
+            2881969,         # Total Gastos
+            19483429         # Total Presupuesto 2025
+        ]
+    }
+
+    total_presupuestado_2025_df = pd.DataFrame(total_presupuestado_2025_data)
+
+    # Mostrar los ítems y el total dentro de la misma sección expandible
+    with st.expander("Total Presupuestado 2025"):
+        for index, row in total_presupuestado_2025_df.iterrows():
+            if row['Concepto'] == "Posiciones":
+                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']}")
+            elif row['Concepto'] == "Total Presupuesto 2025":
+                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
+            else:
+                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
+        st.markdown("---")  # Línea divisoria
+        # Mostrar Total Presupuesto 2025 fuera de la tabla (ya incluido en la tabla)
+        # Pero para mantener la consistencia, no es necesario duplicarlo
+        # Puedes comentar o eliminar la siguiente línea si prefieres
+        # total_presupuesto_2025 = 19483429  # Valor proporcionado por el usuario
+        # st.markdown(f"**Total Presupuesto 2025:** {total_presupuesto_2025:,.0f} USD")
+
+# Funciones específicas para cada unidad
 def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
     file_path = 'BDD_Ajuste.xlsx'
     sheet_name = f"Misiones_{unit}"

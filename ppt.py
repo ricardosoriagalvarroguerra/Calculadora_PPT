@@ -50,54 +50,7 @@ def handle_consolidado_page():
     file_path = 'BDD_Ajuste.xlsx'  # Ajusta la ruta si es necesario
 
     try:
-        # Leer la hoja 'Consolidado'
-        df_consolidado = pd.read_excel(file_path, sheet_name='Consolidado')
-        # Forzar columnas numéricas a número
-        numeric_cols_consolidado = df_consolidado.select_dtypes(include=['float', 'int']).columns.tolist()
-        for col in numeric_cols_consolidado:
-            df_consolidado[col] = pd.to_numeric(df_consolidado[col], errors='coerce')
-        # Redondear a una decimal
-        df_consolidado[numeric_cols_consolidado] = df_consolidado[numeric_cols_consolidado].round(1)
-
-        # Formateador a una sola decimal
-        one_decimal_formatter = 'function(params) { if (params.value == null || params.value === "") { return ""; } var val = Number(params.value); if (isNaN(val)) {return params.value;} return val.toFixed(1); }'
-
-        gb = GridOptionsBuilder.from_dataframe(df_consolidado)
-        gb.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
-
-        for col in numeric_cols_consolidado:
-            gb.configure_column(
-                col,
-                type=["numericColumn"],
-                valueFormatter=one_decimal_formatter
-            )
-        
-        # Eliminar la paginación
-        # gb.configure_pagination(paginationAutoPageSize=True)  # Comentado o eliminado
-
-        gb.configure_side_bar()
-        grid_options = gb.build()
-
-        # Calcular la altura de la tabla
-        num_rows = len(df_consolidado)
-        row_height = 35  # Altura por fila en píxeles (ajusta según tu preferencia)
-        max_height = 800  # Altura máxima para la tabla
-        calculated_height = min(row_height * num_rows + 100, max_height)  # 100 píxeles adicionales para cabecera y márgenes
-
-        AgGrid(
-            df_consolidado,
-            gridOptions=grid_options,
-            data_return_mode=DataReturnMode.FILTERED,
-            update_mode='MODEL_CHANGED',
-            fit_columns_on_grid_load=True,
-            height=calculated_height,
-            width='100%',
-            theme='alpine'
-        )
-
-        st.markdown("### Consolidado V2")
-        
-        # Leer la segunda tabla 'consolidadoV2'
+        # Leer la hoja 'consolidadoV2' primero
         df_consolidadoV2 = pd.read_excel(file_path, sheet_name='consolidadoV2')
         numeric_cols_consolidadoV2 = df_consolidadoV2.select_dtypes(include=['float', 'int']).columns.tolist()
         for col in numeric_cols_consolidadoV2:
@@ -105,14 +58,18 @@ def handle_consolidado_page():
         # Redondear a una decimal
         df_consolidadoV2[numeric_cols_consolidadoV2] = df_consolidadoV2[numeric_cols_consolidadoV2].round(1)
 
+        # Formateador a una sola decimal
+        one_decimal_formatter = 'function(params) { if (params.value == null || params.value === "") { return ""; } var val = Number(params.value); if (isNaN(val)) {return params.value;} return val.toFixed(1); }'
+
         gb_v2 = GridOptionsBuilder.from_dataframe(df_consolidadoV2)
         gb_v2.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
-        
+
         for col in numeric_cols_consolidadoV2:
             gb_v2.configure_column(
                 col,
                 type=["numericColumn"],
-                valueFormatter=one_decimal_formatter
+                valueFormatter=one_decimal_formatter,
+                headerStyle={'backgroundColor': '#f2f2f2', 'fontWeight': 'bold'}
             )
         
         # Eliminar la paginación
@@ -121,9 +78,22 @@ def handle_consolidado_page():
         gb_v2.configure_side_bar()
         grid_options_v2 = gb_v2.build()
 
-        # Calcular la altura de la segunda tabla
+        # Calcular la altura de la tabla consolidadoV2
         num_rows_v2 = len(df_consolidadoV2)
-        calculated_height_v2 = min(row_height * num_rows_v2 + 100, max_height)
+        row_height = 35  # Altura por fila en píxeles (ajusta según tu preferencia)
+        max_height = 800  # Altura máxima para la tabla
+        calculated_height_v2 = min(row_height * num_rows_v2 + 100, max_height)  # 100 píxeles adicionales para cabecera y márgenes
+
+        # Añadir una sección con un fondo ligeramente coloreado para consolidadoV2
+        st.markdown(
+            """
+            <div style="background-color:#e6f7ff; padding:10px; border-radius:5px;">
+                <h3>Consolidado V2</h3>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        st.markdown("")
 
         AgGrid(
             df_consolidadoV2,
@@ -133,7 +103,60 @@ def handle_consolidado_page():
             fit_columns_on_grid_load=True,
             height=calculated_height_v2,
             width='100%',
-            theme='alpine'
+            theme='balham'  # Cambiar el tema para mejor apariencia
+        )
+
+        st.markdown("---")  # Separador horizontal
+
+        # Leer la hoja 'Consolidado'
+        df_consolidado = pd.read_excel(file_path, sheet_name='Consolidado')
+        numeric_cols_consolidado = df_consolidado.select_dtypes(include=['float', 'int']).columns.tolist()
+        for col in numeric_cols_consolidado:
+            df_consolidado[col] = pd.to_numeric(df_consolidado[col], errors='coerce')
+        # Redondear a una decimal
+        df_consolidado[numeric_cols_consolidado] = df_consolidado[numeric_cols_consolidado].round(1)
+
+        gb = GridOptionsBuilder.from_dataframe(df_consolidado)
+        gb.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
+
+        for col in numeric_cols_consolidado:
+            gb.configure_column(
+                col,
+                type=["numericColumn"],
+                valueFormatter=one_decimal_formatter,
+                headerStyle={'backgroundColor': '#f2f2f2', 'fontWeight': 'bold'}
+            )
+        
+        # Eliminar la paginación
+        # gb.configure_pagination(paginationAutoPageSize=True)  # Comentado o eliminado
+
+        gb.configure_side_bar()
+        grid_options = gb.build()
+
+        # Calcular la altura de la tabla consolidado
+        num_rows = len(df_consolidado)
+        calculated_height = min(row_height * num_rows + 100, max_height)  # 100 píxeles adicionales para cabecera y márgenes
+
+        # Añadir una sección con un fondo ligeramente coloreado para consolidado
+        st.markdown(
+            """
+            <div style="background-color:#fff2e6; padding:10px; border-radius:5px;">
+                <h3>Consolidado</h3>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        st.markdown("")
+
+        AgGrid(
+            df_consolidado,
+            gridOptions=grid_options,
+            data_return_mode=DataReturnMode.FILTERED,
+            update_mode='MODEL_CHANGED',
+            fit_columns_on_grid_load=True,
+            height=calculated_height,
+            width='100%',
+            theme='material'  # Cambiar el tema para mejor apariencia
         )
 
     except Exception as e:

@@ -44,44 +44,82 @@ def save_to_cache(df, unidad, tipo):
     cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
     df.to_csv(cache_file, index=False)
 
-# Función para manejar la página de Consolidado (modificada según requerimientos)
+# Función para manejar la página de Consolidado
 def handle_consolidado_page():
     st.header("Consolidado")
     
     file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que la ruta al archivo sea correcta
 
     try:
-        # Leer la hoja 'Consolidado'
+        # Leer la hoja 'Consolidado' del archivo Excel
         df_consolidado = pd.read_excel(file_path, sheet_name='Consolidado')
+
+        # Identificar columnas numéricas para formatear
         numeric_cols_consolidado = df_consolidado.select_dtypes(include=['float', 'int']).columns.tolist()
 
-        # Formatear solo columnas numéricas
-        styled_consolidado = df_consolidado.style.format(
-            subset=numeric_cols_consolidado,
-            formatter="{:,.2f}"
-        ).background_gradient(
-            cmap='BuGn',
-            subset=numeric_cols_consolidado
-        )
+        # Configurar opciones para AgGrid con formateo de números a dos decimales
+        gb = GridOptionsBuilder.from_dataframe(df_consolidado)
+        gb.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
+        
+        for col in numeric_cols_consolidado:
+            gb.configure_column(
+                col,
+                type=["numericColumn"],
+                valueFormatter=f'function(params) {{ return params.value.toFixed(2); }}'
+            )
+        
+        gb.configure_pagination(paginationAutoPageSize=True)  # Habilitar paginación
+        gb.configure_side_bar()  # Habilitar barra lateral en la tabla
 
-        st.subheader("Tabla Consolidado")
-        st.dataframe(styled_consolidado, height=500, width='100%')
+        grid_options = gb.build()
+
+        # Mostrar la tabla usando AgGrid para una mejor interactividad
+        AgGrid(
+            df_consolidado,
+            gridOptions=grid_options,
+            data_return_mode=DataReturnMode.FILTERED,
+            update_mode='MODEL_CHANGED',
+            fit_columns_on_grid_load=True,
+            height=500,
+            width='100%',
+            theme='alpine'
+        )
 
         st.markdown("### Consolidado V2")
+        
         # Leer la segunda tabla 'consolidadoV2'
         df_consolidadoV2 = pd.read_excel(file_path, sheet_name='consolidadoV2')
+
+        # Identificar columnas numéricas para formatear
         numeric_cols_consolidadoV2 = df_consolidadoV2.select_dtypes(include=['float', 'int']).columns.tolist()
 
-        styled_consolidadoV2 = df_consolidadoV2.style.format(
-            subset=numeric_cols_consolidadoV2,
-            formatter="{:,.2f}"
-        ).background_gradient(
-            cmap='BuGn',
-            subset=numeric_cols_consolidadoV2
-        )
+        # Configurar opciones para AgGrid con formateo de números a dos decimales
+        gb_v2 = GridOptionsBuilder.from_dataframe(df_consolidadoV2)
+        gb_v2.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
+        
+        for col in numeric_cols_consolidadoV2:
+            gb_v2.configure_column(
+                col,
+                type=["numericColumn"],
+                valueFormatter=f'function(params) {{ return params.value.toFixed(2); }}'
+            )
+        
+        gb_v2.configure_pagination(paginationAutoPageSize=True)  # Habilitar paginación
+        gb_v2.configure_side_bar()  # Habilitar barra lateral en la tabla
 
-        st.subheader("Tabla Consolidado V2")
-        st.dataframe(styled_consolidadoV2, height=500, width='100%')
+        grid_options_v2 = gb_v2.build()
+
+        # Mostrar la segunda tabla usando AgGrid
+        AgGrid(
+            df_consolidadoV2,
+            gridOptions=grid_options_v2,
+            data_return_mode=DataReturnMode.FILTERED,
+            update_mode='MODEL_CHANGED',
+            fit_columns_on_grid_load=True,
+            height=500,
+            width='100%',
+            theme='alpine'
+        )
 
     except Exception as e:
         st.error(f"Error al leer las hojas 'Consolidado' o 'consolidadoV2': {e}")
@@ -180,6 +218,76 @@ def crear_dona(df, nombres, valores, titulo, color_map, hole=0.5, height=300, ma
     )
     return fig
 
+# Función principal
+def main():
+    # Sidebar para navegación
+    st.sidebar.title("Navegación")
+    main_page = st.sidebar.selectbox(
+        "Selecciona una página principal:",
+        ("VPO", "VPD", "VPE", "VPF", "PRE", "Coordinación", "Consolidado")
+    )
+    st.title(main_page)
+
+    # Definir los montos deseados para cada sección
+    deseados = {
+        "VPO": {
+            "Misiones": 434707.0,
+            "Consultorías": 547700.0
+        },
+        "VPD": {
+            "Misiones": 168000.0,
+            "Consultorías": 130000.0
+        },
+        "VPE": {
+            "Misiones": 28000.0,
+            "Consultorías": 179400.0
+        },
+        "VPF": {
+            "Misiones": 138600.0,
+            "Consultorías": 170000.0
+        },
+        "PRE": {
+            "Misiones": 0.0,         # Se actualizarán dinámicamente
+            "Consultorías": 0.0      # Se actualizarán dinámicamente
+        }
+    }
+
+    # Calcular los montos deseados para PRE sumando los Totales de "Requerimiento del área"
+    file_path = 'BDD_Ajuste.xlsx'
+    try:
+        # Calcular para Misiones PRE
+        df_pre_misiones = pd.read_excel(file_path, sheet_name='Misiones_PRE')
+        total_pre_misiones = df_pre_misiones['Total'].sum()
+        deseados["PRE"]["Misiones"] = total_pre_misiones
+    except Exception as e:
+        st.warning(f"No se pudo leer la hoja 'Misiones_PRE' para establecer el monto DPP2025 de Misiones de PRE: {e}")
+        deseados["PRE"]["Misiones"] = 0.0
+
+    try:
+        # Calcular para Consultorías PRE
+        df_pre_consultorias = pd.read_excel(file_path, sheet_name='Consultores_PRE')
+        total_pre_consultorias = df_pre_consultorias['Total'].sum()
+        deseados["PRE"]["Consultorías"] = total_pre_consultorias
+    except Exception as e:
+        st.warning(f"No se pudo leer la hoja 'Consultores_PRE' para establecer el monto DPP2025 de Consultorías de PRE: {e}")
+        deseados["PRE"]["Consultorías"] = 0.0
+
+    # Manejo de cada página principal
+    if main_page == "VPO":
+        handle_vpo_page(deseados)
+    elif main_page == "VPD":
+        handle_vpd_page(deseados)
+    elif main_page == "VPE":
+        handle_vpe_page(deseados)
+    elif main_page == "VPF":
+        handle_vpf_page(deseados)
+    elif main_page == "PRE":
+        handle_pre_page(deseados)
+    elif main_page == "Coordinación":
+        create_consolidado(deseados)  # Considera eliminar esta línea si ya no es necesaria
+    elif main_page == "Consolidado":
+        handle_consolidado_page()
+
 # Funciones específicas para cada unidad
 def handle_vpo_page(deseados):
     # Seleccionar Vista
@@ -202,17 +310,6 @@ def handle_vpd_page(deseados):
     elif view == "Consultorías":
         page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPD_Consultorias_page")
         process_consultorias_page("VPD", "Consultorías", page, deseados)
-
-def handle_vpe_page(deseados):
-    # Seleccionar Vista
-    view = st.sidebar.selectbox("Selecciona una vista:", ("Misiones", "Consultorías"), key="VPE_view")
-
-    if view == "Misiones":
-        page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPE_Misiones_page")
-        process_misiones_page("VPE", "Misiones", page, deseados, use_objetivo=False)
-    elif view == "Consultorías":
-        page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="VPE_Consultorias_page")
-        process_consultorias_page("VPE", "Consultorías", page, deseados)
 
 def handle_vpf_page(deseados):
     # Seleccionar Vista
@@ -241,14 +338,19 @@ def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
     file_path = 'BDD_Ajuste.xlsx'
     sheet_name = f"Misiones_{unit}"
     cache_file = f'cache/{unit}_{tipo}_DPP2025.csv'
+    cache_dir = 'cache'
 
+    # Función para procesar el DataFrame
     def process_misiones_df(df, sheet_name, unit):
         if unit == "VPE":
+            # Columnas específicas para VPE Misiones
             required_columns = ['ÍTEM PRESUPUESTO', 'OFICINA', 'UNID. ORG.', 'ACCIONES', 'CATEGORÍA', 'SUBCATEGORÍA', 'Suma de MONTO']
         elif unit == "PRE":
+            # Columnas específicas para PRE Misiones
             required_columns = ['País', 'Operación', 'PRE o VP', 'Cantidad de Funcionarios', 'Días',
                                 'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total', 'Area imputacion']
         else:
+            # Columnas para otras unidades
             required_columns = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
                                 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
             if use_objetivo:
@@ -260,12 +362,15 @@ def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
                 st.stop()
 
         if unit == "VPE":
+            # Para VPE, 'Suma de MONTO' ya está calculado
             df['Total'] = pd.to_numeric(df['Suma de MONTO'].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
         elif unit == "PRE":
+            # Para PRE, 'Total' ya está calculado
             df['Total'] = pd.to_numeric(df['Total'].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
         else:
+            # Para otras unidades, recalcular 'Total' si es necesario
             numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
-                               'Alojamiento', 'Per-diem y Otros', 'Movilidad']
+                               'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
             for col in numeric_columns:
                 if col in df.columns:
                     df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
@@ -306,15 +411,21 @@ def process_consultorias_page(unit, tipo, page, deseados):
     file_path = 'BDD_Ajuste.xlsx'
     sheet_name = f"Consultores_{unit}"
     cache_file = f'cache/{unit}_{tipo}_DPP2025.csv'
+    cache_dir = 'cache'
 
+    # Función para procesar el DataFrame
     def process_consultorias_df(df, sheet_name, unit):
         if unit == "VPE":
+            # Columnas específicas para VPE Consultorías
             required_columns = ['ÍTEM PRESUPUESTO', 'OFICINA', 'UNID. ORG.', 'ACCIONES', 'CATEGORÍA', 'SUBCATEGORÍA', 'Suma de MONTO']
         elif unit == "PRE":
+            # Columnas específicas para PRE Consultorías
             required_columns = ['Cargo', 'PRE/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Area imputacion']
         elif unit == "VPO":
+            # Columnas específicas para VPO Consultorías
             required_columns = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Observaciones', 'Objetivo', 'tipo']
         else:
+            # Columnas para otras unidades
             required_columns = ['Cargo', f"{unit}/AREA", 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
 
         for col in required_columns:
@@ -323,13 +434,17 @@ def process_consultorias_page(unit, tipo, page, deseados):
                 st.stop()
 
         if unit == "VPE":
+            # Para VPE, 'Suma de MONTO' ya está calculado
             df['Total'] = pd.to_numeric(df['Suma de MONTO'].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
         elif unit == "PRE":
+            # Para PRE, 'Total' ya está calculado
             df['Total'] = pd.to_numeric(df['Total'].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
         elif unit == "VPO":
+            # Para VPO Consultorías, 'Total' ya está calculado o debe ser recalculado
             if 'Total' not in df.columns or df['Total'].sum() == 0:
                 df['Total'] = df.apply(calculate_total_consultorias, axis=1)
         else:
+            # Para otras unidades, recalcular 'Total' si es necesario
             numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
             for col in numeric_columns:
                 if col in df.columns:
@@ -367,27 +482,113 @@ def process_consultorias_page(unit, tipo, page, deseados):
         desired_total = deseados[unit][tipo]
         edit_consultorias_dpp(df, unit, desired_total, tipo)
 
-# Funciones para mostrar datos
+# Funciones para mostrar y editar datos de Misiones y Consultorías
 def display_misiones_requerimiento(df, unit):
     st.header(f"{unit} - Misiones: Requerimiento del área")
     st.subheader("Tabla Completa - Misiones")
-    # Se formatean las columnas numéricas a dos decimales sin afectar columnas texto
-    numeric_cols = df.select_dtypes(include=['float', 'int']).columns.tolist()
-    st.dataframe(
-        df.style.format("{:,.2f}", subset=numeric_cols),
-        height=400
-    )
+    if unit == "VPE":
+        st.dataframe(
+            df.style.format({
+                "ÍTEM PRESUPUESTO": "{}",
+                "OFICINA": "{}",
+                "UNID. ORG.": "{}",
+                "ACCIONES": "{}",
+                "CATEGORÍA": "{}",
+                "SUBCATEGORÍA": "{}",
+                "Suma de MONTO": "{:,.2f}",
+                "Total": "{:,.2f}"
+            }),
+            height=400
+        )
+    elif unit == "PRE":
+        st.dataframe(
+            df.style.format({
+                "País": "{}",
+                "Operación": "{}",
+                "PRE o VP": "{}",
+                "Cantidad de Funcionarios": "{:.0f}",
+                "Días": "{:.0f}",
+                "Costo de Pasaje": "{:,.2f}",
+                "Alojamiento": "{:,.2f}",
+                "Per-diem y Otros": "{:,.2f}",
+                "Movilidad": "{:,.2f}",
+                "Total": "{:,.2f}",
+                "Area imputacion": "{}"
+            }),
+            height=400
+        )
+    else:
+        st.dataframe(
+            df.style.format({
+                "País": "{}",
+                "Cantidad de Funcionarios": "{:.0f}",
+                "Días": "{:.0f}",
+                "Costo de Pasaje": "{:,.2f}",
+                "Alojamiento": "{:,.2f}",
+                "Per-diem y Otros": "{:,.2f}",
+                "Movilidad": "{:,.2f}",
+                "Total": "{:,.2f}"
+            }),
+            height=400
+        )
 
 def display_consultorias_requerimiento(df, unit):
     st.header(f"{unit} - Consultorías: Requerimiento del área")
     st.subheader("Tabla Completa - Consultorías")
-    numeric_cols = df.select_dtypes(include=['float', 'int']).columns.tolist()
-    st.dataframe(
-        df.style.format("{:,.2f}", subset=numeric_cols),
-        height=400
-    )
+    if unit == "VPE":
+        st.dataframe(
+            df.style.format({
+                "ÍTEM PRESUPUESTO": "{}",
+                "OFICINA": "{}",
+                "UNID. ORG.": "{}",
+                "ACCIONES": "{}",
+                "CATEGORÍA": "{}",
+                "SUBCATEGORÍA": "{}",
+                "Suma de MONTO": "{:,.2f}",
+                "Total": "{:,.2f}"
+            }),
+            height=400
+        )
+    elif unit == "PRE":
+        st.dataframe(
+            df.style.format({
+                "Cargo": "{}",
+                "PRE/AREA": "{}",
+                "Nº": "{:.0f}",
+                "Monto mensual": "{:,.2f}",
+                "cantidad meses": "{:.0f}",
+                "Total": "{:,.2f}",
+                "Area imputacion": "{}"
+            }),
+            height=400
+        )
+    elif unit == "VPO":
+        st.dataframe(
+            df.style.format({
+                "Cargo": "{}",
+                "Nº": "{:.0f}",
+                "Monto mensual": "{:,.2f}",
+                "cantidad meses": "{:.0f}",
+                "Total": "{:,.2f}",
+                "Observaciones": "{}",
+                "Objetivo": "{}",
+                "tipo": "{}"
+            }),
+            height=400
+        )
+    else:
+        st.dataframe(
+            df.style.format({
+                "Cargo": "{}",
+                f"{unit}/AREA": "{}",
+                "Nº": "{:.0f}",
+                "Monto mensual": "{:,.2f}",
+                "cantidad meses": "{:.0f}",
+                "Total": "{:,.2f}"
+            }),
+            height=400
+        )
 
-# Funciones de edición
 def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
     st.header(f"{unit} - Misiones: DPP 2025")
     st.subheader(f"Monto DPP 2025: {desired_total:,.2f} USD")
@@ -397,20 +598,12 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
     gb.configure_default_column(editable=True, groupable=True)
 
     if unit == "VPE":
+        # Configurar columnas para VPE Misiones
         editable_columns = ['Suma de MONTO']
-        for col in editable_columns:
-            gb.configure_column(
-                col,
-                editable=True,
-                type=['numericColumn'],
-                valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
-            )
-        gb.configure_column('Total', editable=False, valueGetter=JsCode("""
-            function(params) {
-                return Number(params.data['Suma de MONTO']);
-            }
-        """))
+        gb.configure_columns(editable_columns, editable=True, type=['numericColumn'], valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})")
+        # 'Total' ya está calculado y no editable
     elif unit == "PRE":
+        # Configurar columnas para PRE Misiones
         editable_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
         for col in editable_columns:
             gb.configure_column(
@@ -419,6 +612,7 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
                 type=['numericColumn'],
                 valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
             )
+        # Recalcular 'Total'
         gb.configure_column('Total', editable=False, valueGetter=JsCode("""
             function(params) {
                 return Math.round(
@@ -430,6 +624,7 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
             }
         """))
     else:
+        # Configurar columnas para otras unidades
         numeric_columns_aggrid = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
                                   'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
         for col in numeric_columns_aggrid:
@@ -469,11 +664,14 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
     edited_df = pd.DataFrame(grid_response['data'])
 
     if unit == "VPE":
+        # Validar columnas para VPE Misiones
         essential_cols = ['ÍTEM PRESUPUESTO', 'OFICINA', 'UNID. ORG.', 'ACCIONES', 'CATEGORÍA', 'SUBCATEGORÍA', 'Suma de MONTO', 'Total']
     elif unit == "PRE":
+        # Validar columnas para PRE Misiones
         essential_cols = ['País', 'Operación', 'PRE o VP', 'Cantidad de Funcionarios', 'Días',
                           'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total', 'Area imputacion']
     else:
+        # Validar columnas para otras unidades
         essential_cols = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
                           'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
         if use_objetivo:
@@ -485,22 +683,37 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
             st.stop()
 
     if unit == "VPE":
+        # Convertir columnas numéricas a numérico
         numeric_columns = ['Suma de MONTO']
         for col in numeric_columns:
-            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
-        edited_df['Total'] = edited_df['Suma de MONTO']
+            if col in edited_df.columns:
+                edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+            else:
+                st.error(f"La columna '{col}' está ausente en los datos editados.")
+                st.stop()
+        # Recalcular 'Total'
+        edited_df['Total'] = edited_df.apply(lambda row: row['Suma de MONTO'], axis=1)
     elif unit == "PRE":
+        # Convertir columnas numéricas a numérico
         numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
         for col in numeric_columns:
-            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+            if col in edited_df.columns:
+                edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+            else:
+                st.error(f"La columna '{col}' está ausente en los datos editados.")
+                st.stop()
+        # Recalcular 'Total'
         edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
     else:
+        # Convertir columnas numéricas a numérico
         numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
                            'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
         for col in numeric_columns:
-            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+
         edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
 
+    # Calcular la suma total y la diferencia con el monto DPP 2025
     total_sum = edited_df['Total'].sum()
     difference = desired_total - total_sum
 
@@ -524,20 +737,12 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
     gb.configure_default_column(editable=True, groupable=True)
 
     if unit == "VPE":
+        # Configurar columnas para VPE Consultorías
         editable_columns = ['Suma de MONTO']
-        for col in editable_columns:
-            gb.configure_column(
-                col,
-                editable=True,
-                type=['numericColumn'],
-                valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
-            )
-        gb.configure_column('Total', editable=False, valueGetter=JsCode("""
-            function(params) {
-                return Number(params.data['Suma de MONTO']);
-            }
-        """))
+        gb.configure_columns(editable_columns, editable=True, type=['numericColumn'], valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})")
+        # 'Total' ya está calculado y no editable
     elif unit == "PRE":
+        # Configurar columnas para PRE Consultorías
         editable_columns = ['Nº', 'Monto mensual', 'cantidad meses']
         for col in editable_columns:
             gb.configure_column(
@@ -546,6 +751,7 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
                 type=['numericColumn'],
                 valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
             )
+        # Recalcular 'Total'
         gb.configure_column('Total', editable=False, valueGetter=JsCode("""
             function(params) {
                 return Math.round(
@@ -554,6 +760,7 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
             }
         """))
     elif unit == "VPO":
+        # Configurar columnas para VPO Consultorías
         editable_columns = ['Nº', 'Monto mensual', 'cantidad meses']
         for col in editable_columns:
             gb.configure_column(
@@ -562,6 +769,7 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
                 type=['numericColumn'],
                 valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
             )
+        # Recalcular 'Total'
         gb.configure_column('Total', editable=False, valueGetter=JsCode("""
             function(params) {
                 return Math.round(
@@ -570,6 +778,7 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
             }
         """))
     else:
+        # Configurar columnas para otras unidades
         numeric_columns_aggrid = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
         for col in numeric_columns_aggrid:
             gb.configure_column(
@@ -605,12 +814,16 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
     edited_df = pd.DataFrame(grid_response['data'])
 
     if unit == "VPE":
+        # Validar columnas para VPE Consultorías
         essential_cols = ['ÍTEM PRESUPUESTO', 'OFICINA', 'UNID. ORG.', 'ACCIONES', 'CATEGORÍA', 'SUBCATEGORÍA', 'Suma de MONTO', 'Total']
     elif unit == "PRE":
+        # Validar columnas para PRE Consultorías
         essential_cols = ['Cargo', 'PRE/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Area imputacion']
     elif unit == "VPO":
+        # Validar columnas para VPO Consultorías
         essential_cols = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Observaciones', 'Objetivo', 'tipo']
     else:
+        # Validar columnas para otras unidades
         essential_cols = ['Cargo', f"{unit}/AREA", 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
 
     for col in essential_cols:
@@ -619,21 +832,36 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
             st.stop()
 
     if unit == "VPE":
+        # Convertir columnas numéricas a numérico
         numeric_columns = ['Suma de MONTO']
         for col in numeric_columns:
-            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
-        edited_df['Total'] = edited_df['Suma de MONTO']
+            if col in edited_df.columns:
+                edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+            else:
+                st.error(f"La columna '{col}' está ausente en los datos editados.")
+                st.stop()
+        # Recalcular 'Total'
+        edited_df['Total'] = edited_df.apply(lambda row: row['Suma de MONTO'], axis=1)
     elif unit == "PRE":
+        # Convertir columnas numéricas a numérico
         numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses']
         for col in numeric_columns:
-            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+            if col in edited_df.columns:
+                edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+            else:
+                st.error(f"La columna '{col}' está ausente en los datos editados.")
+                st.stop()
+        # Recalcular 'Total'
         edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
     else:
+        # Convertir columnas numéricas a numérico
         numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
         for col in numeric_columns:
-            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
+
         edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
 
+    # Calcular la suma total y la diferencia con el monto DPP 2025
     total_sum = edited_df['Total'].sum()
     difference = desired_total - total_sum
 
@@ -647,74 +875,6 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
     edited_df['Total'] = edited_df['Total'].round(2)
     csv = edited_df.to_csv(index=False).encode('utf-8')
     st.download_button(label="Descargar CSV", data=csv, file_name=f"tabla_modificada_{tipo.lower()}_{unit.lower()}.csv", mime="text/csv")
-
-def main():
-    # Sidebar para navegación
-    st.sidebar.title("Navegación")
-    main_page = st.sidebar.selectbox(
-        "Selecciona una página principal:",
-        ("VPO", "VPD", "VPE", "VPF", "PRE", "Coordinación", "Consolidado")
-    )
-    st.title(main_page)
-
-    # Definir los montos deseados para cada sección
-    deseados = {
-        "VPO": {
-            "Misiones": 434707.0,
-            "Consultorías": 547700.0
-        },
-        "VPD": {
-            "Misiones": 168000.0,
-            "Consultorías": 130000.0
-        },
-        "VPE": {
-            "Misiones": 28000.0,
-            "Consultorías": 179400.0
-        },
-        "VPF": {
-            "Misiones": 138600.0,
-            "Consultorías": 170000.0
-        },
-        "PRE": {
-            "Misiones": 0.0,
-            "Consultorías": 0.0
-        }
-    }
-
-    # Calcular los montos deseados para PRE
-    file_path = 'BDD_Ajuste.xlsx'
-    try:
-        # Calcular para Misiones PRE
-        df_pre_misiones = pd.read_excel(file_path, sheet_name='Misiones_PRE')
-        total_pre_misiones = df_pre_misiones['Total'].sum()
-        deseados["PRE"]["Misiones"] = total_pre_misiones
-    except Exception as e:
-        st.warning(f"No se pudo leer la hoja 'Misiones_PRE' para establecer el monto DPP2025 de Misiones de PRE: {e}")
-        deseados["PRE"]["Misiones"] = 0.0
-
-    try:
-        # Calcular para Consultorías PRE
-        df_pre_consultorias = pd.read_excel(file_path, sheet_name='Consultores_PRE')
-        total_pre_consultorias = df_pre_consultorias['Total'].sum()
-        deseados["PRE"]["Consultorías"] = total_pre_consultorias
-    except Exception as e:
-        st.warning(f"No se pudo leer la hoja 'Consultores_PRE' para establecer el monto DPP2025 de Consultorías de PRE: {e}")
-        deseados["PRE"]["Consultorías"] = 0.0
-
-    if main_page == "VPO":
-        handle_vpo_page(deseados)
-    elif main_page == "VPD":
-        handle_vpd_page(deseados)
-    elif main_page == "VPE":
-        handle_vpe_page(deseados)
-    elif main_page == "VPF":
-        handle_vpf_page(deseados)
-    elif main_page == "PRE":
-        handle_pre_page(deseados)
-    elif main_page == "Coordinación":
-        create_consolidado(deseados)
-    elif main_page == "Consolidado":
-        handle_consolidado_page()
 
 if __name__ == "__main__":
     main()

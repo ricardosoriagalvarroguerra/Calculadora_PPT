@@ -3,37 +3,13 @@ import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder, DataReturnMode, JsCode
 import plotly.express as px
 import os
-import streamlit_authenticator as stauth
-from passlib.context import CryptContext
 
-# ------------------- Configuración de la Autenticación -------------------
+# ------------------- Configuración de Contraseñas -------------------
 
-# Define las credenciales de los usuarios con contraseñas hasheadas
-# Reemplaza los hashes de contraseña con los generados anteriormente
-users = {
-    "usernames": {
-        "usuario1": {
-            "name": "Usuario Uno",
-            "password": "$2b$12$KIXQp6Zx6jB1H.cw8B1e7e7MZf2A9E8aRJpM1yYJWc6A9ZbZTc4Qa"  # Hash para "password1"
-        },
-        "usuario2": {
-            "name": "Usuario Dos",
-            "password": "$2b$12$wzQq6Zx6jC2H.cw8C2e8e8Mzf3B0F9E9aSKqM2yYZD7B0AbZTd5Rb"  # Hash para "password2"
-        }
-    }
-}
+# Contraseña principal para acceder a la aplicación
+APP_PASSWORD = "tu_contraseña_principal"  # Reemplaza con tu contraseña principal
 
-# Configuración del autenticador
-authenticator = stauth.Authenticate(
-    users["usernames"],
-    "mi_app_auth",  # Nombre de la cookie
-    "abcdef",       # Clave secreta (debe ser una cadena segura)
-    cookie_expiry_days=30
-)
-
-# ------------------- Definición de Contraseñas por Página -------------------
-
-# Define contraseñas para cada página
+# Contraseñas específicas para cada página
 PAGE_PASSWORDS = {
     "VPO": "vpo_password",
     "VPD": "vpd_password",
@@ -129,9 +105,7 @@ def handle_consolidado_page():
                 headerStyle={'backgroundColor': '#f2f2f2', 'fontWeight': 'bold'}
             )
         
-        # Eliminar la paginación
-        # gb_resumen.configure_pagination(paginationAutoPageSize=True)  # Comentado o eliminado
-
+        # Configurar sidebar y opciones
         gb_resumen.configure_side_bar()
         grid_options_resumen = gb_resumen.build()
 
@@ -185,9 +159,6 @@ def handle_consolidado_page():
                 headerStyle={'backgroundColor': '#f2f2f2', 'fontWeight': 'bold'}
             )
         
-        # Eliminar la paginación
-        # gb_desglose.configure_pagination(paginationAutoPageSize=True)  # Comentado o eliminado
-
         gb_desglose.configure_side_bar()
         grid_options_desglose = gb_desglose.build()
 
@@ -216,8 +187,6 @@ def handle_consolidado_page():
             width='100%',
             theme='balham'  # Usar el mismo tema para consistencia
         )
-    except Exception as e:
-        st.error(f"Error al leer las hojas 'Consolidado' o 'consolidadoV2': {e}")
 
     # Función para crear el consolidado dividido en Misiones y Consultorías
     def create_consolidado(deseados):
@@ -311,92 +280,9 @@ def handle_consolidado_page():
         )
         return fig
 
-    # Función para manejar la autenticación por página
-    def authenticate_page(page_name):
-        if 'page_authenticated' not in st.session_state:
-            st.session_state['page_authenticated'] = {}
-
-        if page_name not in st.session_state['page_authenticated']:
-            st.session_state['page_authenticated'][page_name] = False
-
-        if not st.session_state['page_authenticated'][page_name]:
-            st.header(f"🔒 Acceso a la página: {page_name}")
-            password = st.text_input(f"Ingresa la contraseña para la página {page_name}:", type="password", key=f"password_{page_name}")
-            if st.button(f"Ingresar a {page_name}"):
-                if password == PAGE_PASSWORDS.get(page_name, ""):
-                    st.session_state['page_authenticated'][page_name] = True
-                    st.success("¡Autenticación exitosa!")
-                    st.experimental_rerun()
-                else:
-                    st.error("Contraseña incorrecta. Inténtalo de nuevo.")
-
-    # Función para crear el consolidado dividido en Misiones y Consultorías
-    def create_consolidado(deseados):
-        st.header("")
-        cache_dir = 'cache'
-        unidades = ['VPO', 'VPD', 'VPE', 'VPF', 'PRE']
-        tipos = ['Misiones', 'Consultorías']
-
-        data_misiones = []
-        data_consultorias = []
-
-        for unidad in unidades:
-            for tipo in tipos:
-                row = {'Unidad Organizacional': unidad}
-                cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
-                if os.path.exists(cache_file):
-                    df = pd.read_csv(cache_file)
-                    actual = df['Total'].sum()
-                    deseado = deseados[unidad][tipo]
-                    ajuste = deseado - actual
-                    row[f"{tipo} - Actual"] = actual
-                    row[f"{tipo} - Monto DPP 2025"] = deseado
-                    row[f"{tipo} - Ajuste"] = ajuste
-                else:
-                    deseado = deseados[unidad][tipo]
-                    row[f"{tipo} - Actual"] = 0
-                    row[f"{tipo} - Monto DPP 2025"] = deseado
-                    row[f"{tipo} - Ajuste"] = deseado
-                if tipo == 'Misiones':
-                    data_misiones.append(row)
-                else:
-                    data_consultorias.append(row)
-
-        consolidado_misiones_df = pd.DataFrame(data_misiones)
-        consolidado_consultorias_df = pd.DataFrame(data_consultorias)
-
-        def highlight_zero(val):
-            color = 'background-color: #90ee90' if val == 0 else ''
-            return color
-
-        # Formatear a una sola decimal
-        consolidado_misiones_display = consolidado_misiones_df[['Unidad Organizacional', "Misiones - Actual", "Misiones - Monto DPP 2025", "Misiones - Ajuste"]]
-        styled_misiones_df = consolidado_misiones_display.style.applymap(highlight_zero, subset=["Misiones - Ajuste"])
-        styled_misiones_df = styled_misiones_df.format(
-            "{:,.1f}", 
-            subset=[
-                "Misiones - Actual",
-                "Misiones - Monto DPP 2025",
-                "Misiones - Ajuste"
-            ]
-        )
-
-        consolidado_consultorias_display = consolidado_consultorias_df[['Unidad Organizacional', "Consultorías - Actual", "Consultorías - Monto DPP 2025", "Consultorías - Ajuste"]]
-        styled_consultorias_df = consolidado_consultorias_display.style.applymap(highlight_zero, subset=["Consultorías - Ajuste"])
-        styled_consultorias_df = styled_consultorias_df.format(
-            "{:,.1f}", 
-            subset=[
-                "Consultorías - Actual",
-                "Consultorías - Monto DPP 2025",
-                "Consultorías - Ajuste"
-            ]
-        )
-
-        st.subheader("Misiones")
-        st.dataframe(styled_misiones_df)
-
-        st.subheader("Consultorías")
-        st.dataframe(styled_consultorias_df)
+    # Funciones para manejar cada página (VPO, VPD, etc.)
+    # Estas funciones deben mantenerse igual que en tu código original
+    # A continuación, se incluyen las funciones basadas en el código que proporcionaste
 
     # Función para manejar la página VPO
     def handle_vpo_page(deseados):
@@ -960,188 +846,109 @@ def handle_consolidado_page():
         )
         return fig
 
-    # Función para editar Consultorías - DPP 2025
-    def edit_consultorias_dpp(df, unit, desired_total, tipo):
-        st.header(f"{unit} - Consultorías: DPP 2025")
-        st.subheader(f"Monto DPP 2025: {desired_total:,.2f} USD")
-        st.write("Edita los valores en la tabla para ajustar el presupuesto.")
-
-        gb = GridOptionsBuilder.from_dataframe(df)
-        gb.configure_default_column(editable=True, groupable=True)
-
+    # Función para mostrar la tabla de Consultorías - Requerimiento del área
+    def display_consultorias_requerimiento(df, unit):
+        st.header(f"{unit} - Consultorías: Requerimiento del área")
+        st.subheader("Tabla Completa - Consultorías")
         if unit == "VPE":
-            editable_columns = ['Suma de MONTO']
-            gb.configure_columns(editable_columns, editable=True, type=['numericColumn'],
-                                 valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})")
+            st.dataframe(
+                df.style.format({
+                    "ÍTEM PRESUPUESTO": "{}",
+                    "OFICINA": "{}",
+                    "UNID. ORG.": "{}",
+                    "ACCIONES": "{}",
+                    "CATEGORÍA": "{}",
+                    "SUBCATEGORÍA": "{}",
+                    "Suma de MONTO": "{:,.2f}",
+                    "Total": "{:,.2f}"
+                }),
+                height=400
+            )
         elif unit == "PRE":
-            editable_columns = ['Nº', 'Monto mensual', 'cantidad meses']
-            for col in editable_columns:
-                gb.configure_column(
-                    col,
-                    editable=True,
-                    type=['numericColumn'],
-                    valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
-                )
-            gb.configure_column('Total', editable=False, valueGetter=JsCode("""
-                function(params) {
-                    return Math.round(
-                        Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses'])
-                    * 100) / 100;
-                }
-            """))
+            st.dataframe(
+                df.style.format({
+                    "Cargo": "{}",
+                    "PRE/AREA": "{}",
+                    "Nº": "{:.0f}",
+                    "Monto mensual": "{:,.2f}",
+                    "cantidad meses": "{:.0f}",
+                    "Total": "{:,.2f}",
+                    "Area imputacion": "{}"
+                }),
+                height=400
+            )
         elif unit == "VPO":
-            editable_columns = ['Nº', 'Monto mensual', 'cantidad meses']
-            for col in editable_columns:
-                gb.configure_column(
-                    col,
-                    editable=True,
-                    type=['numericColumn'],
-                    valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
-                )
-            gb.configure_column('Total', editable=False, valueGetter=JsCode("""
-                function(params) {
-                    return Math.round(
-                        Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses'])
-                    * 100) / 100;
-                }
-            """))
+            st.dataframe(
+                df.style.format({
+                    "Cargo": "{}",
+                    "Nº": "{:.0f}",
+                    "Monto mensual": "{:,.2f}",
+                    "cantidad meses": "{:.0f}",
+                    "Total": "{:,.2f}",
+                    "Observaciones": "{}",
+                    "Objetivo": "{}",
+                    "tipo": "{}"
+                }),
+                height=400
+            )
         else:
-            numeric_columns_aggrid = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-            for col in numeric_columns_aggrid:
-                gb.configure_column(
-                    col,
-                    type=['numericColumn'],
-                    valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
-                )
+            st.dataframe(
+                df.style.format({
+                    "Cargo": "{}",
+                    f"{unit}/AREA": "{}",
+                    "Nº": "{:.0f}",
+                    "Monto mensual": "{:,.2f}",
+                    "cantidad meses": "{:.0f}",
+                    "Total": "{:,.2f}"
+                }),
+                height=400
+            )
 
-            gb.configure_column('Total', editable=False, valueGetter=JsCode("""
-                function(params) {
-                    return Math.round(
-                        Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses'])
-                    * 100) / 100;
-                }
-            """))
+    # ------------------- Autenticación -------------------
 
-        gb.configure_grid_options(domLayout='normal')
-        grid_options = gb.build()
+    # Inicializar el estado de autenticación
+    if 'authenticated' not in st.session_state:
+        st.session_state['authenticated'] = False
 
-        grid_response = AgGrid(
-            df,
-            gridOptions=grid_options,
-            data_return_mode=DataReturnMode.FILTERED,
-            update_mode='MODEL_CHANGED',
-            fit_columns_on_grid_load=False,
-            height=400,
-            width='100%',
-            enable_enterprise_modules=False,
-            allow_unsafe_jscode=True,
-            theme='alpine'
-        )
+    if 'page_authenticated' not in st.session_state:
+        st.session_state['page_authenticated'] = {}
 
-        edited_df = pd.DataFrame(grid_response['data'])
+    # Función para autenticar la aplicación
+    def authenticate_app():
+        if not st.session_state['authenticated']:
+            st.title("🔒 Acceso Requerido")
+            password = st.text_input("Ingresa la contraseña para acceder a la aplicación:", type="password")
+            if st.button("Ingresar"):
+                if password == APP_PASSWORD:
+                    st.session_state['authenticated'] = True
+                    st.success("¡Autenticación exitosa!")
+                    st.experimental_rerun()
+                else:
+                    st.error("Contraseña incorrecta. Inténtalo de nuevo.")
 
-        if unit == "VPE":
-            essential_cols = ['ÍTEM PRESUPUESTO', 'OFICINA', 'UNID. ORG.', 'ACCIONES', 'CATEGORÍA', 'SUBCATEGORÍA', 'Suma de MONTO', 'Total']
-        elif unit == "PRE":
-            essential_cols = ['Cargo', 'PRE/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Area imputacion']
-        elif unit == "VPO":
-            essential_cols = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Observaciones', 'Objetivo', 'tipo']
-        else:
-            essential_cols = ['Cargo', f"{unit}/AREA", 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
+    # Función para autenticar cada página
+    def authenticate_page(page_name):
+        if page_name not in st.session_state['page_authenticated']:
+            st.session_state['page_authenticated'][page_name] = False
 
-        for col in essential_cols:
-            if col not in edited_df.columns:
-                st.error(f"La columna '{col}' está ausente en los datos editados.")
-                st.stop()
-
-        if unit == "VPE":
-            numeric_columns = ['Suma de MONTO']
-            for col in numeric_columns:
-                edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-            edited_df['Total'] = edited_df['Suma de MONTO']
-        elif unit == "PRE":
-            numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses']
-            for col in numeric_columns:
-                edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-            edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
-        else:
-            numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
-            for col in numeric_columns:
-                edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-            edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
-
-        total_sum = edited_df['Total'].sum()
-        difference = desired_total - total_sum
-
-        col1, col2 = st.columns(2)
-        col1.metric("Monto Actual (USD)", f"{total_sum:,.2f}")
-        col2.metric("Diferencia con el Monto DPP 2025 (USD)", f"{difference:,.2f}")
-
-        save_to_cache(edited_df, unit, tipo)
-
-        st.subheader("Descargar Tabla Modificada")
-        edited_df['Total'] = edited_df['Total'].round(2)
-        csv = edited_df.to_csv(index=False).encode('utf-8')
-        st.download_button(label="Descargar CSV", data=csv, file_name=f"tabla_modificada_{tipo.lower()}_{unit.lower()}.csv", mime="text/csv")
+        if not st.session_state['page_authenticated'][page_name]:
+            st.header(f"🔒 Acceso a la página: {page_name}")
+            password = st.text_input(f"Ingresa la contraseña para la página {page_name}:", type="password", key=f"password_{page_name}")
+            if st.button(f"Ingresar a {page_name}"):
+                if password == PAGE_PASSWORDS.get(page_name, ""):
+                    st.session_state['page_authenticated'][page_name] = True
+                    st.success("¡Autenticación exitosa!")
+                    st.experimental_rerun()
+                else:
+                    st.error("Contraseña incorrecta. Inténtalo de nuevo.")
 
     # ------------------- Función Principal -------------------
 
-    def main_app(deseados):
-        st.sidebar.title("Navegación")
-        main_page = st.sidebar.selectbox(
-            "Selecciona una página principal:",
-            ("VPO", "VPD", "VPE", "VPF", "PRE", "Coordinación", "Consolidado")
-        )
-        st.title(main_page)
-
-        file_path = 'BDD_Ajuste.xlsx'
-        try:
-            df_pre_misiones = pd.read_excel(file_path, sheet_name='Misiones_PRE')
-            total_pre_misiones = df_pre_misiones['Total'].sum()
-            deseados["PRE"]["Misiones"] = total_pre_misiones
-        except Exception as e:
-            st.warning(f"No se pudo leer la hoja 'Misiones_PRE': {e}")
-            deseados["PRE"]["Misiones"] = 0.0
-
-        try:
-            df_pre_consultorias = pd.read_excel(file_path, sheet_name='Consultores_PRE')
-            total_pre_consultorias = df_pre_consultorias['Total'].sum()
-            deseados["PRE"]["Consultorías"] = total_pre_consultorias
-        except Exception as e:
-            st.warning(f"No se pudo leer la hoja 'Consultores_PRE': {e}")
-            deseados["PRE"]["Consultorías"] = 0.0
-
-        # Autenticación por página
-        authenticate_page(main_page)
-
-        if st.session_state['page_authenticated'].get(main_page, False):
-            # Route to the appropriate page handler
-            if main_page == "VPO":
-                handle_vpo_page(deseados)
-            elif main_page == "VPD":
-                handle_vpd_page(deseados)
-            elif main_page == "VPE":
-                handle_vpe_page(deseados)
-            elif main_page == "VPF":
-                handle_vpf_page(deseados)
-            elif main_page == "PRE":
-                handle_pre_page(deseados)
-            elif main_page == "Coordinación":
-                create_consolidado(deseados)
-            elif main_page == "Consolidado":
-                handle_consolidado_page()
-
-    # ------------------- Función Principal de Autenticación -------------------
-
     def main():
-        # Autenticación de usuario
-        name, authentication_status, username = authenticator.login('Iniciar Sesión', 'main')
+        # Autenticación de la aplicación
+        authenticate_app()
 
-        if authentication_status:
-            # Autenticación exitosa
-            authenticator.logout('Cerrar Sesión', 'main')
-            st.sidebar.write(f"Bienvenido *{name}*")
-
+        if st.session_state['authenticated']:
             # Define tu diccionario 'deseados' como antes
             deseados = {
                 "VPO": {
@@ -1166,12 +973,50 @@ def handle_consolidado_page():
                 }
             }
 
-            main_app(deseados)
+            file_path = 'BDD_Ajuste.xlsx'
+            try:
+                df_pre_misiones = pd.read_excel(file_path, sheet_name='Misiones_PRE')
+                total_pre_misiones = df_pre_misiones['Total'].sum()
+                deseados["PRE"]["Misiones"] = total_pre_misiones
+            except Exception as e:
+                st.warning(f"No se pudo leer la hoja 'Misiones_PRE': {e}")
+                deseados["PRE"]["Misiones"] = 0.0
 
-        elif authentication_status == False:
-            st.error('Nombre de usuario o contraseña incorrectos')
-        elif authentication_status == None:
-            st.warning('Por favor, ingresa tu nombre de usuario y contraseña')
+            try:
+                df_pre_consultorias = pd.read_excel(file_path, sheet_name='Consultores_PRE')
+                total_pre_consultorias = df_pre_consultorias['Total'].sum()
+                deseados["PRE"]["Consultorías"] = total_pre_consultorias
+            except Exception as e:
+                st.warning(f"No se pudo leer la hoja 'Consultores_PRE': {e}")
+                deseados["PRE"]["Consultorías"] = 0.0
+
+            # Sidebar Navigation
+            st.sidebar.title("Navegación")
+            main_page = st.sidebar.selectbox(
+                "Selecciona una página principal:",
+                ("VPO", "VPD", "VPE", "VPF", "PRE", "Coordinación", "Consolidado")
+            )
+            st.title(main_page)
+
+            # Autenticación por página
+            authenticate_page(main_page)
+
+            if st.session_state['page_authenticated'].get(main_page, False):
+                # Route to the appropriate page handler
+                if main_page == "VPO":
+                    handle_vpo_page(deseados)
+                elif main_page == "VPD":
+                    handle_vpd_page(deseados)
+                elif main_page == "VPE":
+                    handle_vpe_page(deseados)
+                elif main_page == "VPF":
+                    handle_vpf_page(deseados)
+                elif main_page == "PRE":
+                    handle_pre_page(deseados)
+                elif main_page == "Coordinación":
+                    create_consolidado(deseados)
+                elif main_page == "Consolidado":
+                    handle_consolidado_page()
 
     # ------------------- Ejecutar la Aplicación -------------------
 

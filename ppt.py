@@ -100,7 +100,7 @@ def handle_consolidado_page():
         # Añadir una sección con un fondo ligeramente coloreado para Resumen
         st.markdown(
             """
-            <div style="background-color:#e6f7ff; padding:10px; border-radius:5px;">
+            <div style="background-color:#FFFFFF; padding:10px; border-radius:5px;">
                 <h3>Resumen</h3>
             </div>
             """,
@@ -154,7 +154,7 @@ def handle_consolidado_page():
         # Añadir una sección con un fondo ligeramente coloreado para Desglose
         st.markdown(
             """
-            <div style="background-color:#fff2e6; padding:10px; border-radius:5px;">
+            <div style="background-color:#FFFFFF; padding:10px; border-radius:5px;">
                 <h3>Desglose</h3>
             </div>
             """,

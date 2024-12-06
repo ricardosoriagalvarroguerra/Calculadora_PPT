@@ -44,7 +44,6 @@ def save_to_cache(df, unidad, tipo):
     cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
     df.to_csv(cache_file, index=False)
 
-# Función para manejar la página de Consolidado
 def handle_consolidado_page():
     st.header("Consolidado")
     
@@ -57,6 +56,8 @@ def handle_consolidado_page():
         numeric_cols_consolidado = df_consolidado.select_dtypes(include=['float', 'int']).columns.tolist()
         for col in numeric_cols_consolidado:
             df_consolidado[col] = pd.to_numeric(df_consolidado[col], errors='coerce')
+        # Redondear a una decimal
+        df_consolidado[numeric_cols_consolidado] = df_consolidado[numeric_cols_consolidado].round(1)
 
         # Formateador a una sola decimal
         one_decimal_formatter = 'function(params) { if (params.value == null || params.value === "") { return ""; } var val = Number(params.value); if (isNaN(val)) {return params.value;} return val.toFixed(1); }'
@@ -93,6 +94,8 @@ def handle_consolidado_page():
         numeric_cols_consolidadoV2 = df_consolidadoV2.select_dtypes(include=['float', 'int']).columns.tolist()
         for col in numeric_cols_consolidadoV2:
             df_consolidadoV2[col] = pd.to_numeric(df_consolidadoV2[col], errors='coerce')
+        # Redondear a una decimal
+        df_consolidadoV2[numeric_cols_consolidadoV2] = df_consolidadoV2[numeric_cols_consolidadoV2].round(1)
 
         gb_v2 = GridOptionsBuilder.from_dataframe(df_consolidadoV2)
         gb_v2.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
@@ -121,7 +124,6 @@ def handle_consolidado_page():
 
     except Exception as e:
         st.error(f"Error al leer las hojas 'Consolidado' o 'consolidadoV2': {e}")
-
 # Función para crear el consolidado dividido en Misiones y Consultorías
 def create_consolidado(deseados):
     st.header("")

@@ -72,9 +72,17 @@ def handle_consolidado_page():
                 valueFormatter=one_decimal_formatter
             )
         
-        gb.configure_pagination(paginationAutoPageSize=True)
+        # Eliminar la paginación
+        # gb.configure_pagination(paginationAutoPageSize=True)  # Comentado o eliminado
+
         gb.configure_side_bar()
         grid_options = gb.build()
+
+        # Calcular la altura de la tabla
+        num_rows = len(df_consolidado)
+        row_height = 35  # Altura por fila en píxeles (ajusta según tu preferencia)
+        max_height = 800  # Altura máxima para la tabla
+        calculated_height = min(row_height * num_rows + 100, max_height)  # 100 píxeles adicionales para cabecera y márgenes
 
         AgGrid(
             df_consolidado,
@@ -82,7 +90,7 @@ def handle_consolidado_page():
             data_return_mode=DataReturnMode.FILTERED,
             update_mode='MODEL_CHANGED',
             fit_columns_on_grid_load=True,
-            height=500,
+            height=calculated_height,
             width='100%',
             theme='alpine'
         )
@@ -107,9 +115,15 @@ def handle_consolidado_page():
                 valueFormatter=one_decimal_formatter
             )
         
-        gb_v2.configure_pagination(paginationAutoPageSize=True)
+        # Eliminar la paginación
+        # gb_v2.configure_pagination(paginationAutoPageSize=True)  # Comentado o eliminado
+
         gb_v2.configure_side_bar()
         grid_options_v2 = gb_v2.build()
+
+        # Calcular la altura de la segunda tabla
+        num_rows_v2 = len(df_consolidadoV2)
+        calculated_height_v2 = min(row_height * num_rows_v2 + 100, max_height)
 
         AgGrid(
             df_consolidadoV2,
@@ -117,7 +131,7 @@ def handle_consolidado_page():
             data_return_mode=DataReturnMode.FILTERED,
             update_mode='MODEL_CHANGED',
             fit_columns_on_grid_load=True,
-            height=500,
+            height=calculated_height_v2,
             width='100%',
             theme='alpine'
         )

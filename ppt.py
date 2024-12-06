@@ -48,30 +48,31 @@ def save_to_cache(df, unidad, tipo):
 def handle_consolidado_page():
     st.header("Consolidado")
     
-    file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que la ruta al archivo sea correcta
+    file_path = 'BDD_Ajuste.xlsx'  # Ajusta la ruta si es necesario
 
     try:
         # Leer la hoja 'Consolidado'
         df_consolidado = pd.read_excel(file_path, sheet_name='Consolidado')
-
-        # Identificar columnas numéricas
+        # Forzar columnas numéricas a número
         numeric_cols_consolidado = df_consolidado.select_dtypes(include=['float', 'int']).columns.tolist()
+        for col in numeric_cols_consolidado:
+            df_consolidado[col] = pd.to_numeric(df_consolidado[col], errors='coerce')
 
-        # Configurar opciones para AgGrid con formateo a 1 decimal
+        # Formateador a una sola decimal
+        one_decimal_formatter = 'function(params) { if (params.value == null || params.value === "") { return ""; } var val = Number(params.value); if (isNaN(val)) {return params.value;} return val.toFixed(1); }'
+
         gb = GridOptionsBuilder.from_dataframe(df_consolidado)
         gb.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
-        
-        # Se ajusta a 1 decimal
+
         for col in numeric_cols_consolidado:
             gb.configure_column(
                 col,
                 type=["numericColumn"],
-                valueFormatter='function(params) { return params.value !== undefined && params.value !== null ? Number(params.value).toFixed(1) : ""; }'
+                valueFormatter=one_decimal_formatter
             )
         
         gb.configure_pagination(paginationAutoPageSize=True)
         gb.configure_side_bar()
-
         grid_options = gb.build()
 
         AgGrid(
@@ -89,9 +90,9 @@ def handle_consolidado_page():
         
         # Leer la segunda tabla 'consolidadoV2'
         df_consolidadoV2 = pd.read_excel(file_path, sheet_name='consolidadoV2')
-
-        # Identificar columnas numéricas
         numeric_cols_consolidadoV2 = df_consolidadoV2.select_dtypes(include=['float', 'int']).columns.tolist()
+        for col in numeric_cols_consolidadoV2:
+            df_consolidadoV2[col] = pd.to_numeric(df_consolidadoV2[col], errors='coerce')
 
         gb_v2 = GridOptionsBuilder.from_dataframe(df_consolidadoV2)
         gb_v2.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
@@ -100,12 +101,11 @@ def handle_consolidado_page():
             gb_v2.configure_column(
                 col,
                 type=["numericColumn"],
-                valueFormatter='function(params) { return params.value !== undefined && params.value !== null ? Number(params.value).toFixed(1) : ""; }'
+                valueFormatter=one_decimal_formatter
             )
         
         gb_v2.configure_pagination(paginationAutoPageSize=True)
         gb_v2.configure_side_bar()
-
         grid_options_v2 = gb_v2.build()
 
         AgGrid(
@@ -161,6 +161,7 @@ def create_consolidado(deseados):
         color = 'background-color: #90ee90' if val == 0 else ''
         return color
 
+    # Formatear a una sola decimal
     consolidado_misiones_display = consolidado_misiones_df[['Unidad Organizacional', "Misiones - Actual", "Misiones - Monto DPP 2025", "Misiones - Ajuste"]]
     styled_misiones_df = consolidado_misiones_display.style.applymap(highlight_zero, subset=["Misiones - Ajuste"])
     styled_misiones_df = styled_misiones_df.format(

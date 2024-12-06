@@ -4,3 +4,4 @@ openpyxl
 streamlit-aggrid
 plotly
 streamlit_authenticator
+passlib

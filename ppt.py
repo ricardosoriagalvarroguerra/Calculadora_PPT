@@ -7,11 +7,12 @@ import os
 # Funciones de cálculo con fórmulas corregidas
 def calculate_total_misiones(row):
     return round(
-        (row['Costo de Pasaje'] + (row['Alojamiento'] + row['Per-diem y Otros'] + row['Movilidad']) * row['Días']) * row['Cantidad de Funcionarios']
+        (row['Costo de Pasaje'] + (row['Alojamiento'] + row['Per-diem y Otros'] + row['Movilidad']) * row['Días']) * row['Cantidad de Funcionarios'],
+        2
     )
 
 def calculate_total_consultorias(row):
-    return round(row['Nº'] * row['Monto mensual'] * row['cantidad meses'])
+    return round(row['Nº'] * row['Monto mensual'] * row['cantidad meses'], 2)
 
 # Configuración de la página
 st.set_page_config(page_title="Presupuesto", layout="wide")
@@ -46,19 +47,27 @@ def save_to_cache(df, unidad, tipo):
 # Función para manejar la página de Consolidado
 def handle_consolidado_page():
     st.header("Consolidado")
-
+    
     file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que la ruta al archivo sea correcta
 
     try:
         # Leer la hoja 'Consolidado' del archivo Excel
         df_consolidado = pd.read_excel(file_path, sheet_name='Consolidado')
 
-        # Opcional: Aplica formato a la tabla si lo deseas
-        # styled_consolidado_df = df_consolidado.style.format("{:,.0f}")  # No es necesario si usas AgGrid
+        # Identificar columnas numéricas para formatear
+        numeric_cols_consolidado = df_consolidado.select_dtypes(include=['float', 'int']).columns.tolist()
 
-        # Configurar opciones para AgGrid
+        # Configurar opciones para AgGrid con formateo de números a dos decimales
         gb = GridOptionsBuilder.from_dataframe(df_consolidado)
-        gb.configure_default_column(editable=False, sortable=True, filter=True)
+        gb.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
+        
+        for col in numeric_cols_consolidado:
+            gb.configure_column(
+                col,
+                type=["numericColumn"],
+                valueFormatter=f'function(params) {{ return params.value.toFixed(2); }}'
+            )
+        
         gb.configure_pagination(paginationAutoPageSize=True)  # Habilitar paginación
         gb.configure_side_bar()  # Habilitar barra lateral en la tabla
 
@@ -76,8 +85,44 @@ def handle_consolidado_page():
             theme='alpine'
         )
 
+        st.markdown("### Consolidado V2")
+        
+        # Leer la segunda tabla 'consolidadoV2'
+        df_consolidadoV2 = pd.read_excel(file_path, sheet_name='consolidadoV2')
+
+        # Identificar columnas numéricas para formatear
+        numeric_cols_consolidadoV2 = df_consolidadoV2.select_dtypes(include=['float', 'int']).columns.tolist()
+
+        # Configurar opciones para AgGrid con formateo de números a dos decimales
+        gb_v2 = GridOptionsBuilder.from_dataframe(df_consolidadoV2)
+        gb_v2.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
+        
+        for col in numeric_cols_consolidadoV2:
+            gb_v2.configure_column(
+                col,
+                type=["numericColumn"],
+                valueFormatter=f'function(params) {{ return params.value.toFixed(2); }}'
+            )
+        
+        gb_v2.configure_pagination(paginationAutoPageSize=True)  # Habilitar paginación
+        gb_v2.configure_side_bar()  # Habilitar barra lateral en la tabla
+
+        grid_options_v2 = gb_v2.build()
+
+        # Mostrar la segunda tabla usando AgGrid
+        AgGrid(
+            df_consolidadoV2,
+            gridOptions=grid_options_v2,
+            data_return_mode=DataReturnMode.FILTERED,
+            update_mode='MODEL_CHANGED',
+            fit_columns_on_grid_load=True,
+            height=500,
+            width='100%',
+            theme='alpine'
+        )
+
     except Exception as e:
-        st.error(f"Error al leer la hoja 'Consolidado': {e}")
+        st.error(f"Error al leer las hojas 'Consolidado' o 'consolidadoV2': {e}")
 
 # Función para crear el consolidado dividido en Misiones y Consultorías
 def create_consolidado(deseados):
@@ -122,7 +167,7 @@ def create_consolidado(deseados):
     consolidado_misiones_display = consolidado_misiones_df[['Unidad Organizacional', "Misiones - Actual", "Misiones - Monto DPP 2025", "Misiones - Ajuste"]]
     styled_misiones_df = consolidado_misiones_display.style.applymap(highlight_zero, subset=["Misiones - Ajuste"])
     styled_misiones_df = styled_misiones_df.format(
-        "{:,.0f}", 
+        "{:,.2f}", 
         subset=[
             "Misiones - Actual",
             "Misiones - Monto DPP 2025",
@@ -134,7 +179,7 @@ def create_consolidado(deseados):
     consolidado_consultorias_display = consolidado_consultorias_df[['Unidad Organizacional', "Consultorías - Actual", "Consultorías - Monto DPP 2025", "Consultorías - Ajuste"]]
     styled_consultorias_df = consolidado_consultorias_display.style.applymap(highlight_zero, subset=["Consultorías - Ajuste"])
     styled_consultorias_df = styled_consultorias_df.format(
-        "{:,.0f}", 
+        "{:,.2f}", 
         subset=[
             "Consultorías - Actual",
             "Consultorías - Monto DPP 2025",
@@ -287,41 +332,6 @@ def handle_pre_page(deseados):
     elif view == "Consultorías":
         page = st.sidebar.selectbox("Selecciona una subpágina:", ("Requerimiento del área", "DPP 2025"), key="PRE_Consultorias_page")
         process_consultorias_page("PRE", "Consultorías", page, deseados)
-
-def handle_consolidado_page():
-    st.header("Consolidado")
-
-    file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que la ruta al archivo sea correcta
-
-    try:
-        # Leer la hoja 'Consolidado' del archivo Excel
-        df_consolidado = pd.read_excel(file_path, sheet_name='Consolidado')
-
-        # Opcional: Aplica formato a la tabla si lo deseas
-        # styled_consolidado_df = df_consolidado.style.format("{:,.0f}")  # No es necesario si usas AgGrid
-
-        # Configurar opciones para AgGrid
-        gb = GridOptionsBuilder.from_dataframe(df_consolidado)
-        gb.configure_default_column(editable=False, sortable=True, filter=True)
-        gb.configure_pagination(paginationAutoPageSize=True)  # Habilitar paginación
-        gb.configure_side_bar()  # Habilitar barra lateral en la tabla
-
-        grid_options = gb.build()
-
-        # Mostrar la tabla usando AgGrid para una mejor interactividad
-        AgGrid(
-            df_consolidado,
-            gridOptions=grid_options,
-            data_return_mode=DataReturnMode.FILTERED,
-            update_mode='MODEL_CHANGED',
-            fit_columns_on_grid_load=True,
-            height=500,
-            width='100%',
-            theme='alpine'
-        )
-
-    except Exception as e:
-        st.error(f"Error al leer la hoja 'Consolidado': {e}")
 
 # Funciones para procesar Misiones y Consultorías
 def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
@@ -485,8 +495,8 @@ def display_misiones_requerimiento(df, unit):
                 "ACCIONES": "{}",
                 "CATEGORÍA": "{}",
                 "SUBCATEGORÍA": "{}",
-                "Suma de MONTO": "{:,.0f}",
-                "Total": "{:,.0f}"
+                "Suma de MONTO": "{:,.2f}",
+                "Total": "{:,.2f}"
             }),
             height=400
         )
@@ -498,11 +508,11 @@ def display_misiones_requerimiento(df, unit):
                 "PRE o VP": "{}",
                 "Cantidad de Funcionarios": "{:.0f}",
                 "Días": "{:.0f}",
-                "Costo de Pasaje": "{:,.0f}",
-                "Alojamiento": "{:,.0f}",
-                "Per-diem y Otros": "{:,.0f}",
-                "Movilidad": "{:,.0f}",
-                "Total": "{:,.0f}",
+                "Costo de Pasaje": "{:,.2f}",
+                "Alojamiento": "{:,.2f}",
+                "Per-diem y Otros": "{:,.2f}",
+                "Movilidad": "{:,.2f}",
+                "Total": "{:,.2f}",
                 "Area imputacion": "{}"
             }),
             height=400
@@ -513,11 +523,11 @@ def display_misiones_requerimiento(df, unit):
                 "País": "{}",
                 "Cantidad de Funcionarios": "{:.0f}",
                 "Días": "{:.0f}",
-                "Costo de Pasaje": "{:,.0f}",
-                "Alojamiento": "{:,.0f}",
-                "Per-diem y Otros": "{:,.0f}",
-                "Movilidad": "{:,.0f}",
-                "Total": "{:,.0f}"
+                "Costo de Pasaje": "{:,.2f}",
+                "Alojamiento": "{:,.2f}",
+                "Per-diem y Otros": "{:,.2f}",
+                "Movilidad": "{:,.2f}",
+                "Total": "{:,.2f}"
             }),
             height=400
         )
@@ -534,8 +544,8 @@ def display_consultorias_requerimiento(df, unit):
                 "ACCIONES": "{}",
                 "CATEGORÍA": "{}",
                 "SUBCATEGORÍA": "{}",
-                "Suma de MONTO": "{:,.0f}",
-                "Total": "{:,.0f}"
+                "Suma de MONTO": "{:,.2f}",
+                "Total": "{:,.2f}"
             }),
             height=400
         )
@@ -545,9 +555,9 @@ def display_consultorias_requerimiento(df, unit):
                 "Cargo": "{}",
                 "PRE/AREA": "{}",
                 "Nº": "{:.0f}",
-                "Monto mensual": "{:,.0f}",
+                "Monto mensual": "{:,.2f}",
                 "cantidad meses": "{:.0f}",
-                "Total": "{:,.0f}",
+                "Total": "{:,.2f}",
                 "Area imputacion": "{}"
             }),
             height=400
@@ -557,9 +567,9 @@ def display_consultorias_requerimiento(df, unit):
             df.style.format({
                 "Cargo": "{}",
                 "Nº": "{:.0f}",
-                "Monto mensual": "{:,.0f}",
+                "Monto mensual": "{:,.2f}",
                 "cantidad meses": "{:.0f}",
-                "Total": "{:,.0f}",
+                "Total": "{:,.2f}",
                 "Observaciones": "{}",
                 "Objetivo": "{}",
                 "tipo": "{}"
@@ -572,16 +582,16 @@ def display_consultorias_requerimiento(df, unit):
                 "Cargo": "{}",
                 f"{unit}/AREA": "{}",
                 "Nº": "{:.0f}",
-                "Monto mensual": "{:,.0f}",
+                "Monto mensual": "{:,.2f}",
                 "cantidad meses": "{:.0f}",
-                "Total": "{:,.0f}"
+                "Total": "{:,.2f}"
             }),
             height=400
         )
 
 def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
     st.header(f"{unit} - Misiones: DPP 2025")
-    st.subheader(f"Monto DPP 2025: {desired_total:,.0f} USD")
+    st.subheader(f"Monto DPP 2025: {desired_total:,.2f} USD")
     st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto DPP 2025.")
 
     gb = GridOptionsBuilder.from_dataframe(df)
@@ -590,7 +600,7 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
     if unit == "VPE":
         # Configurar columnas para VPE Misiones
         editable_columns = ['Suma de MONTO']
-        gb.configure_columns(editable_columns, editable=True, type=['numericColumn'], valueFormatter="Math.round(x).toLocaleString()")
+        gb.configure_columns(editable_columns, editable=True, type=['numericColumn'], valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})")
         # 'Total' ya está calculado y no editable
     elif unit == "PRE":
         # Configurar columnas para PRE Misiones
@@ -600,7 +610,7 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
                 col,
                 editable=True,
                 type=['numericColumn'],
-                valueFormatter="Math.round(x).toLocaleString()"
+                valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
             )
         # Recalcular 'Total'
         gb.configure_column('Total', editable=False, valueGetter=JsCode("""
@@ -610,7 +620,7 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
                     (Number(params.data['Alojamiento']) + Number(params.data['Per-diem y Otros']) + Number(params.data['Movilidad'])) * 
                     Number(params.data['Días'])) * 
                     Number(params.data['Cantidad de Funcionarios'])
-                );
+                * 100) / 100;
             }
         """))
     else:
@@ -621,7 +631,7 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
             gb.configure_column(
                 col,
                 type=['numericColumn'],
-                valueFormatter="Math.round(x).toLocaleString()"
+                valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
             )
 
         gb.configure_column('Total', editable=False, valueGetter=JsCode("""
@@ -631,7 +641,7 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
                     (Number(params.data['Alojamiento']) + Number(params.data['Per-diem y Otros']) + Number(params.data['Movilidad'])) * 
                     Number(params.data['Días'])) * 
                     Number(params.data['Cantidad de Funcionarios'])
-                );
+                * 100) / 100;
             }
         """))
 
@@ -708,19 +718,19 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
     difference = desired_total - total_sum
 
     col1, col2 = st.columns(2)
-    col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
-    col2.metric("Diferencia con el Monto DPP 2025 (USD)", f"{difference:,.0f}")
+    col1.metric("Monto Actual (USD)", f"{total_sum:,.2f}")
+    col2.metric("Diferencia con el Monto DPP 2025 (USD)", f"{difference:,.2f}")
 
     save_to_cache(edited_df, unit, tipo)
 
     st.subheader("Descargar Tabla Modificada")
-    edited_df['Total'] = edited_df['Total'].round(0)
+    edited_df['Total'] = edited_df['Total'].round(2)
     csv = edited_df.to_csv(index=False).encode('utf-8')
     st.download_button(label="Descargar CSV", data=csv, file_name=f"tabla_modificada_{tipo.lower()}_{unit.lower()}.csv", mime="text/csv")
 
 def edit_consultorias_dpp(df, unit, desired_total, tipo):
     st.header(f"{unit} - Consultorías: DPP 2025")
-    st.subheader(f"Monto DPP 2025: {desired_total:,.0f} USD")
+    st.subheader(f"Monto DPP 2025: {desired_total:,.2f} USD")
     st.write("Edita los valores en la tabla para ajustar el presupuesto y alcanzar el monto DPP 2025.")
 
     gb = GridOptionsBuilder.from_dataframe(df)
@@ -729,7 +739,7 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
     if unit == "VPE":
         # Configurar columnas para VPE Consultorías
         editable_columns = ['Suma de MONTO']
-        gb.configure_columns(editable_columns, editable=True, type=['numericColumn'], valueFormatter="Math.round(x).toLocaleString()")
+        gb.configure_columns(editable_columns, editable=True, type=['numericColumn'], valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})")
         # 'Total' ya está calculado y no editable
     elif unit == "PRE":
         # Configurar columnas para PRE Consultorías
@@ -739,14 +749,14 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
                 col,
                 editable=True,
                 type=['numericColumn'],
-                valueFormatter="Math.round(x).toLocaleString()"
+                valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
             )
         # Recalcular 'Total'
         gb.configure_column('Total', editable=False, valueGetter=JsCode("""
             function(params) {
                 return Math.round(
                     Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses'])
-                );
+                * 100) / 100;
             }
         """))
     elif unit == "VPO":
@@ -757,14 +767,14 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
                 col,
                 editable=True,
                 type=['numericColumn'],
-                valueFormatter="Math.round(x).toLocaleString()"
+                valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
             )
         # Recalcular 'Total'
         gb.configure_column('Total', editable=False, valueGetter=JsCode("""
             function(params) {
                 return Math.round(
                     Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses'])
-                );
+                * 100) / 100;
             }
         """))
     else:
@@ -774,14 +784,14 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
             gb.configure_column(
                 col,
                 type=['numericColumn'],
-                valueFormatter="Math.round(x).toLocaleString()"
+                valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
             )
 
         gb.configure_column('Total', editable=False, valueGetter=JsCode("""
             function(params) {
                 return Math.round(
                     Number(params.data['Nº']) * Number(params.data['Monto mensual']) * Number(params.data['cantidad meses'])
-                );
+                * 100) / 100;
             }
         """))
 
@@ -856,13 +866,13 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
     difference = desired_total - total_sum
 
     col1, col2 = st.columns(2)
-    col1.metric("Monto Actual (USD)", f"{total_sum:,.0f}")
-    col2.metric("Diferencia con el Monto DPP 2025 (USD)", f"{difference:,.0f}")
+    col1.metric("Monto Actual (USD)", f"{total_sum:,.2f}")
+    col2.metric("Diferencia con el Monto DPP 2025 (USD)", f"{difference:,.2f}")
 
     save_to_cache(edited_df, unit, tipo)
 
     st.subheader("Descargar Tabla Modificada")
-    edited_df['Total'] = edited_df['Total'].round(0)
+    edited_df['Total'] = edited_df['Total'].round(2)
     csv = edited_df.to_csv(index=False).encode('utf-8')
     st.download_button(label="Descargar CSV", data=csv, file_name=f"tabla_modificada_{tipo.lower()}_{unit.lower()}.csv", mime="text/csv")
 

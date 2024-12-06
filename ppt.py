@@ -45,10 +45,11 @@ def save_to_cache(df, unidad, tipo):
     df.to_csv(cache_file, index=False)
 
 # Función para manejar la página de Consolidado
+# Función para manejar la página de Consolidado
 def handle_consolidado_page():
     st.header("Consolidado")
     
-    file_path = 'BDD_Ajuste.xlsx'  # Ajusta la ruta si es necesario
+    file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que la ruta es correcta
 
     try:
         # Leer la hoja 'consolidadoV2' primero y renombrarla a 'Resumen'
@@ -60,7 +61,18 @@ def handle_consolidado_page():
         df_resumen[numeric_cols_resumen] = df_resumen[numeric_cols_resumen].round(1)
 
         # Formateador a una sola decimal
-        one_decimal_formatter = 'function(params) { if (params.value == null || params.value === "") { return ""; } var val = Number(params.value); if (isNaN(val)) {return params.value;} return val.toFixed(1); }'
+        one_decimal_formatter = '''
+            function(params) { 
+                if (params.value == null || params.value === "") { 
+                    return ""; 
+                } 
+                var val = Number(params.value); 
+                if (isNaN(val)) {
+                    return params.value;
+                } 
+                return val.toFixed(1); 
+            }
+        '''
 
         # Configurar AgGrid para Resumen
         gb_resumen = GridOptionsBuilder.from_dataframe(df_resumen)
@@ -105,7 +117,7 @@ def handle_consolidado_page():
             fit_columns_on_grid_load=True,
             height=calculated_height_resumen,
             width='100%',
-            theme='ag-theme-balham'  # Usar el mismo tema para consistencia
+            theme='balham'  # Usar el mismo tema para consistencia
         )
 
         st.markdown("---")  # Separador horizontal
@@ -159,7 +171,7 @@ def handle_consolidado_page():
             fit_columns_on_grid_load=True,
             height=calculated_height_desglose,
             width='100%',
-            theme='ag-theme-balham'  # Usar el mismo tema para consistencia
+            theme='balham'  # Usar el mismo tema para consistencia
         )
 
     except Exception as e:

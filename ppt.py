@@ -45,9 +45,8 @@ def save_to_cache(df, unidad, tipo):
     df.to_csv(cache_file, index=False)
 
 # Función para manejar la página de Consolidado
-# Función para manejar la página de Consolidado
 def handle_consolidado_page():
-    st.header("Consolidado")
+    st.header("")
     
     file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que la ruta es correcta
 

@@ -44,70 +44,52 @@ def save_to_cache(df, unidad, tipo):
     cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
     df.to_csv(cache_file, index=False)
 
+# Función para manejar la página de Consolidado
 def handle_consolidado_page():
     st.header("Consolidado")
     
-    file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que la ruta es correcta
+    file_path = 'BDD_Ajuste.xlsx'  # Ajusta la ruta si es necesario
 
     try:
-        # Leer la hoja 'consolidadoV2' primero y renombrarla a 'Resumen'
-        df_resumen = pd.read_excel(file_path, sheet_name='consolidadoV2')
-        numeric_cols_resumen = df_resumen.select_dtypes(include=['float', 'int']).columns.tolist()
-        for col in numeric_cols_resumen:
-            df_resumen[col] = pd.to_numeric(df_resumen[col], errors='coerce')
+        # Leer la hoja 'consolidadoV2' primero
+        df_consolidadoV2 = pd.read_excel(file_path, sheet_name='consolidadoV2')
+        numeric_cols_consolidadoV2 = df_consolidadoV2.select_dtypes(include=['float', 'int']).columns.tolist()
+        for col in numeric_cols_consolidadoV2:
+            df_consolidadoV2[col] = pd.to_numeric(df_consolidadoV2[col], errors='coerce')
         # Redondear a una decimal
-        df_resumen[numeric_cols_resumen] = df_resumen[numeric_cols_resumen].round(1)
+        df_consolidadoV2[numeric_cols_consolidadoV2] = df_consolidadoV2[numeric_cols_consolidadoV2].round(1)
 
         # Formateador a una sola decimal
-        one_decimal_formatter = '''
-            function(params) { 
-                if (params.value == null || params.value === "") { 
-                    return ""; 
-                } 
-                var val = Number(params.value); 
-                if (isNaN(val)) {
-                    return params.value;
-                } 
-                return val.toFixed(1); 
-            }
-        '''
+        one_decimal_formatter = 'function(params) { if (params.value == null || params.value === "") { return ""; } var val = Number(params.value); if (isNaN(val)) {return params.value;} return val.toFixed(1); }'
 
-        # Configurar AgGrid para Resumen
-        gb_resumen = GridOptionsBuilder.from_dataframe(df_resumen)
-        gb_resumen.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
+        gb_v2 = GridOptionsBuilder.from_dataframe(df_consolidadoV2)
+        gb_v2.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
 
-        for col in numeric_cols_resumen:
-            gb_resumen.configure_column(
+        for col in numeric_cols_consolidadoV2:
+            gb_v2.configure_column(
                 col,
                 type=["numericColumn"],
                 valueFormatter=one_decimal_formatter,
-                header_style={
-                    'backgroundColor': '#f2f2f2', 
-                    'fontWeight': 'bold',
-                    'textAlign': 'center'
-                },
-                cellStyle={
-                    'textAlign': 'right'
-                }
+                headerStyle={'backgroundColor': '#f2f2f2', 'fontWeight': 'bold'}
             )
         
         # Eliminar la paginación
-        # gb_resumen.configure_pagination(paginationAutoPageSize=True)  # Comentado o eliminado
+        # gb_v2.configure_pagination(paginationAutoPageSize=True)  # Comentado o eliminado
 
-        gb_resumen.configure_side_bar()
-        grid_options_resumen = gb_resumen.build()
+        gb_v2.configure_side_bar()
+        grid_options_v2 = gb_v2.build()
 
-        # Calcular la altura de la tabla Resumen
-        num_rows_resumen = len(df_resumen)
+        # Calcular la altura de la tabla consolidadoV2
+        num_rows_v2 = len(df_consolidadoV2)
         row_height = 35  # Altura por fila en píxeles (ajusta según tu preferencia)
         max_height = 800  # Altura máxima para la tabla
-        calculated_height_resumen = min(row_height * num_rows_resumen + 100, max_height)  # 100 píxeles adicionales para cabecera y márgenes
+        calculated_height_v2 = min(row_height * num_rows_v2 + 100, max_height)  # 100 píxeles adicionales para cabecera y márgenes
 
-        # Añadir una sección con un fondo ligeramente coloreado para Resumen
+        # Añadir una sección con un fondo ligeramente coloreado para consolidadoV2
         st.markdown(
             """
             <div style="background-color:#e6f7ff; padding:10px; border-radius:5px;">
-                <h3>Resumen</h3>
+                <h3>Consolidado V2</h3>
             </div>
             """,
             unsafe_allow_html=True
@@ -115,60 +97,52 @@ def handle_consolidado_page():
         st.markdown("")
 
         AgGrid(
-            df_resumen,
-            gridOptions=grid_options_resumen,
+            df_consolidadoV2,
+            gridOptions=grid_options_v2,
             data_return_mode=DataReturnMode.FILTERED,
             update_mode='MODEL_CHANGED',
             fit_columns_on_grid_load=True,
-            height=calculated_height_resumen,
+            height=calculated_height_v2,
             width='100%',
-            theme='ag-theme-balham'  # Usar el mismo tema para consistencia
+            theme='balham'  # Cambiar el tema para mejor apariencia
         )
 
         st.markdown("---")  # Separador horizontal
 
-        # Leer la hoja 'Consolidado' y renombrarla a 'Ampliado'
-        df_ampliado = pd.read_excel(file_path, sheet_name='Consolidado')
-        numeric_cols_ampliado = df_ampliado.select_dtypes(include=['float', 'int']).columns.tolist()
-        for col in numeric_cols_ampliado:
-            df_ampliado[col] = pd.to_numeric(df_ampliado[col], errors='coerce')
+        # Leer la hoja 'Consolidado'
+        df_consolidado = pd.read_excel(file_path, sheet_name='Consolidado')
+        numeric_cols_consolidado = df_consolidado.select_dtypes(include=['float', 'int']).columns.tolist()
+        for col in numeric_cols_consolidado:
+            df_consolidado[col] = pd.to_numeric(df_consolidado[col], errors='coerce')
         # Redondear a una decimal
-        df_ampliado[numeric_cols_ampliado] = df_ampliado[numeric_cols_ampliado].round(1)
+        df_consolidado[numeric_cols_consolidado] = df_consolidado[numeric_cols_consolidado].round(1)
 
-        # Configurar AgGrid para Ampliado
-        gb_ampliado = GridOptionsBuilder.from_dataframe(df_ampliado)
-        gb_ampliado.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
+        gb = GridOptionsBuilder.from_dataframe(df_consolidado)
+        gb.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
 
-        for col in numeric_cols_ampliado:
-            gb_ampliado.configure_column(
+        for col in numeric_cols_consolidado:
+            gb.configure_column(
                 col,
                 type=["numericColumn"],
                 valueFormatter=one_decimal_formatter,
-                header_style={
-                    'backgroundColor': '#f2f2f2', 
-                    'fontWeight': 'bold',
-                    'textAlign': 'center'
-                },
-                cellStyle={
-                    'textAlign': 'right'
-                }
+                headerStyle={'backgroundColor': '#f2f2f2', 'fontWeight': 'bold'}
             )
         
         # Eliminar la paginación
-        # gb_ampliado.configure_pagination(paginationAutoPageSize=True)  # Comentado o eliminado
+        # gb.configure_pagination(paginationAutoPageSize=True)  # Comentado o eliminado
 
-        gb_ampliado.configure_side_bar()
-        grid_options_ampliado = gb_ampliado.build()
+        gb.configure_side_bar()
+        grid_options = gb.build()
 
-        # Calcular la altura de la tabla Ampliado
-        num_rows_ampliado = len(df_ampliado)
-        calculated_height_ampliado = min(row_height * num_rows_ampliado + 100, max_height)  # 100 píxeles adicionales para cabecera y márgenes
+        # Calcular la altura de la tabla consolidado
+        num_rows = len(df_consolidado)
+        calculated_height = min(row_height * num_rows + 100, max_height)  # 100 píxeles adicionales para cabecera y márgenes
 
-        # Añadir una sección con un fondo ligeramente coloreado para Ampliado
+        # Añadir una sección con un fondo ligeramente coloreado para consolidado
         st.markdown(
             """
             <div style="background-color:#fff2e6; padding:10px; border-radius:5px;">
-                <h3>Ampliado</h3>
+                <h3>Consolidado</h3>
             </div>
             """,
             unsafe_allow_html=True
@@ -176,14 +150,14 @@ def handle_consolidado_page():
         st.markdown("")
 
         AgGrid(
-            df_ampliado,
-            gridOptions=grid_options_ampliado,
+            df_consolidado,
+            gridOptions=grid_options,
             data_return_mode=DataReturnMode.FILTERED,
             update_mode='MODEL_CHANGED',
             fit_columns_on_grid_load=True,
-            height=calculated_height_ampliado,
+            height=calculated_height,
             width='100%',
-            theme='ag-theme-balham'  # Usar el mismo tema para consistencia
+            theme='material'  # Cambiar el tema para mejor apariencia
         )
 
     except Exception as e:

@@ -44,6 +44,8 @@ def save_to_cache(df, unidad, tipo):
     cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
     df.to_csv(cache_file, index=False)
 
+# Función para manejar la página de Consolidado
+# Función para manejar la página de Consolidado
 def handle_consolidado_page():
     st.header("Consolidado")
     
@@ -84,7 +86,9 @@ def handle_consolidado_page():
                 headerStyle={'backgroundColor': '#f2f2f2', 'fontWeight': 'bold'}
             )
         
-        # Configurar la barra lateral en AgGrid
+        # Eliminar la paginación
+        # gb_resumen.configure_pagination(paginationAutoPageSize=True)  # Comentado o eliminado
+
         gb_resumen.configure_side_bar()
         grid_options_resumen = gb_resumen.build()
 
@@ -98,7 +102,7 @@ def handle_consolidado_page():
         st.markdown(
             """
             <div style="background-color:#e6f7ff; padding:10px; border-radius:5px;">
-                <h3 style="text-decoration: none;">Resumen</h3>
+                <h3>Resumen</h3>
             </div>
             """,
             unsafe_allow_html=True
@@ -138,7 +142,9 @@ def handle_consolidado_page():
                 headerStyle={'backgroundColor': '#f2f2f2', 'fontWeight': 'bold'}
             )
         
-        # Configurar la barra lateral en AgGrid
+        # Eliminar la paginación
+        # gb_desglose.configure_pagination(paginationAutoPageSize=True)  # Comentado o eliminado
+
         gb_desglose.configure_side_bar()
         grid_options_desglose = gb_desglose.build()
 
@@ -150,7 +156,7 @@ def handle_consolidado_page():
         st.markdown(
             """
             <div style="background-color:#fff2e6; padding:10px; border-radius:5px;">
-                <h3 style="text-decoration: none;">Desglose</h3>
+                <h3>Desglose</h3>
             </div>
             """,
             unsafe_allow_html=True

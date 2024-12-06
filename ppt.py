@@ -43,6 +43,42 @@ def save_to_cache(df, unidad, tipo):
     cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
     df.to_csv(cache_file, index=False)
 
+# Función para manejar la página de Consolidado
+def handle_consolidado_page():
+    st.header("Consolidado")
+
+    file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que la ruta al archivo sea correcta
+
+    try:
+        # Leer la hoja 'Consolidado' del archivo Excel
+        df_consolidado = pd.read_excel(file_path, sheet_name='Consolidado')
+
+        # Opcional: Aplica formato a la tabla si lo deseas
+        # styled_consolidado_df = df_consolidado.style.format("{:,.0f}")  # No es necesario si usas AgGrid
+
+        # Configurar opciones para AgGrid
+        gb = GridOptionsBuilder.from_dataframe(df_consolidado)
+        gb.configure_default_column(editable=False, sortable=True, filter=True)
+        gb.configure_pagination(paginationAutoPageSize=True)  # Habilitar paginación
+        gb.configure_side_bar()  # Habilitar barra lateral en la tabla
+
+        grid_options = gb.build()
+
+        # Mostrar la tabla usando AgGrid para una mejor interactividad
+        AgGrid(
+            df_consolidado,
+            gridOptions=grid_options,
+            data_return_mode=DataReturnMode.FILTERED,
+            update_mode='MODEL_CHANGED',
+            fit_columns_on_grid_load=True,
+            height=500,
+            width='100%',
+            theme='alpine'
+        )
+
+    except Exception as e:
+        st.error(f"Error al leer la hoja 'Consolidado': {e}")
+
 # Función para crear el consolidado dividido en Misiones y Consultorías
 def create_consolidado(deseados):
     st.header("")
@@ -141,7 +177,10 @@ def crear_dona(df, nombres, valores, titulo, color_map, hole=0.5, height=300, ma
 def main():
     # Sidebar para navegación
     st.sidebar.title("Navegación")
-    main_page = st.sidebar.selectbox("Selecciona una página principal:", ("VPO", "VPD", "VPE", "VPF", "PRE", "Coordinación", "Consolidado"))
+    main_page = st.sidebar.selectbox(
+        "Selecciona una página principal:",
+        ("VPO", "VPD", "VPE", "VPF", "PRE", "Coordinación", "Consolidado")
+    )
     st.title(main_page)
 
     # Definir los montos deseados para cada sección
@@ -200,7 +239,7 @@ def main():
     elif main_page == "PRE":
         handle_pre_page(deseados)
     elif main_page == "Coordinación":
-        create_consolidado(deseados)
+        create_consolidado(deseados)  # Considera eliminar esta línea si ya no es necesaria
     elif main_page == "Consolidado":
         handle_consolidado_page()
 
@@ -250,201 +289,39 @@ def handle_pre_page(deseados):
         process_consultorias_page("PRE", "Consultorías", page, deseados)
 
 def handle_consolidado_page():
-    st.header("Resumen por Unidad Organizacional")
+    st.header("Consolidado")
 
-    # Datos para la sección Gobernanza
-    gobernanza_data = {
-        "Departamento": ["Asamblea de gobernadores", "Directorio Ejecutivo", "Tribunal Administrativo"],
-        "Monto (USD)": [97284, 263610, 50700]
-    }
+    file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que la ruta al archivo sea correcta
 
-    gobernanza_df = pd.DataFrame(gobernanza_data)
+    try:
+        # Leer la hoja 'Consolidado' del archivo Excel
+        df_consolidado = pd.read_excel(file_path, sheet_name='Consolidado')
 
-    # Mostrar los ítems y el total dentro de la misma sección expandible
-    with st.expander("Gobernanza"):
-        for index, row in gobernanza_df.iterrows():
-            st.markdown(f"**{row['Departamento']}:** {row['Monto (USD)']:,.0f} USD")
-        st.markdown("---")  # Línea divisoria
-        total_presupuesto_gobernanza = gobernanza_df['Monto (USD)'].sum()
-        st.markdown(f"**Total Presupuesto Gobernanza:** {total_presupuesto_gobernanza:,.0f} USD")
+        # Opcional: Aplica formato a la tabla si lo deseas
+        # styled_consolidado_df = df_consolidado.style.format("{:,.0f}")  # No es necesario si usas AgGrid
 
-    # Datos para la sección Presidencia Ejecutiva
-    presidencia_ejecutiva_data = {
-        "Concepto": [
-            "Posiciones",
-            "Misiones de Servicio",
-            "Servicios Profesionales a Término",
-            "Gasto en Personal",
-            "Programa Comunicaciones",
-            "Gastos Administrativos",
-            "Gastos Totales"
-        ],
-        "Monto (USD)": [
-            15,              # Posiciones (count)
-            80168,           # Misiones de Servicio
-            338372,          # Servicios Profesionales a Término
-            2431332,         # Gasto en Personal
-            408174,          # Programa Comunicaciones
-            8500,            # Gastos Administrativos
-            416674           # Gastos Totales
-        ]
-    }
+        # Configurar opciones para AgGrid
+        gb = GridOptionsBuilder.from_dataframe(df_consolidado)
+        gb.configure_default_column(editable=False, sortable=True, filter=True)
+        gb.configure_pagination(paginationAutoPageSize=True)  # Habilitar paginación
+        gb.configure_side_bar()  # Habilitar barra lateral en la tabla
 
-    presidencia_ejecutiva_df = pd.DataFrame(presidencia_ejecutiva_data)
+        grid_options = gb.build()
 
-    # Mostrar los ítems y el total dentro de la misma sección expandible
-    with st.expander("Presidencia Ejecutiva"):
-        for index, row in presidencia_ejecutiva_df.iterrows():
-            if row['Concepto'] == "Posiciones":
-                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']}")
-            else:
-                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
-        st.markdown("---")  # Línea divisoria
-        # Calcular Total Presupuesto excluyendo "Gastos Totales" y "Posiciones"
-        total_presupuesto_presidencia = presidencia_ejecutiva_df[
-            ~presidencia_ejecutiva_df['Concepto'].isin(["Gastos Totales", "Posiciones"])
-        ]['Monto (USD)'].sum()
-        st.markdown(f"**Total Presupuesto Presidencia Ejecutiva:** {total_presupuesto_presidencia:,.0f} USD")
+        # Mostrar la tabla usando AgGrid para una mejor interactividad
+        AgGrid(
+            df_consolidado,
+            gridOptions=grid_options,
+            data_return_mode=DataReturnMode.FILTERED,
+            update_mode='MODEL_CHANGED',
+            fit_columns_on_grid_load=True,
+            height=500,
+            width='100%',
+            theme='alpine'
+        )
 
-    # Datos para la sección Vicepresidencia Ejecutiva
-    vicepresidencia_ejecutiva_data = {
-        "Concepto": [
-            "Posiciones",
-            "Misiones de Servicio",
-            "Servicios Profesionales a Término",
-            "Gastos en Personal",
-            "Programa de Comunicaciones",
-            "Gastos Administrativos",
-            "Gastos Totales"
-        ],
-        "Monto (USD)": [
-            21,              # Posiciones (count)
-            28244,           # Misiones de Servicio
-            179466,          # Servicios Profesionales a Término
-            2450804,         # Gastos en Personal
-            5000,            # Programa de Comunicaciones
-            1037395,         # Gastos Administrativos
-            1042395          # Gastos Totales
-        ]
-    }
-
-    vicepresidencia_ejecutiva_df = pd.DataFrame(vicepresidencia_ejecutiva_data)
-
-    # Mostrar los ítems y el total dentro de la misma sección expandible
-    with st.expander("Vicepresidencia Ejecutiva"):
-        for index, row in vicepresidencia_ejecutiva_df.iterrows():
-            if row['Concepto'] == "Posiciones":
-                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']}")
-            else:
-                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
-        st.markdown("---")  # Línea divisoria
-        # Calcular Total Presupuesto excluyendo "Gastos Totales" y "Posiciones"
-        total_presupuesto_vicepresidencia = vicepresidencia_ejecutiva_df[
-            ~vicepresidencia_ejecutiva_df['Concepto'].isin(["Gastos Totales", "Posiciones"])
-        ]['Monto (USD)'].sum()
-        st.markdown(f"**Total Presupuesto Vicepresidencia Ejecutiva:** {total_presupuesto_vicepresidencia:,.0f} USD")
-
-    # Datos para la sección Vicepresidencia de Desarrollo Estratégico
-    vicepresidencia_de_desarrollo_estrategico_data = {
-        "Concepto": [
-            "Posiciones",
-            "Misiones de Servicio",
-            "Servicios Profesionales a Término",
-            "Gastos en Personal",
-            "Programa de Comunicaciones",
-            "Total de Gastos"
-        ],
-        "Monto (USD)": [
-            10,              # Posiciones (count)
-            203960,          # Misiones de Servicio
-            323160,          # Servicios Profesionales a Término
-            1636433,         # Gastos en Personal
-            13600,           # Programa de Comunicaciones
-            677800           # Total de Gastos
-        ]
-    }
-
-    vicepresidencia_de_desarrollo_estrategico_df = pd.DataFrame(vicepresidencia_de_desarrollo_estrategico_data)
-
-    # Mostrar los ítems y el total dentro de la misma sección expandible
-    with st.expander("Vicepresidencia de Desarrollo Estratégico"):
-        for index, row in vicepresidencia_de_desarrollo_estrategico_df.iterrows():
-            if row['Concepto'] == "Posiciones":
-                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']}")
-            else:
-                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
-        st.markdown("---")  # Línea divisoria
-        # Mostrar Total Presupuesto fuera de la tabla
-        total_presupuesto_de_desarrollo = 2177163  # Valor proporcionado por el usuario
-        st.markdown(f"**Total Presupuesto Vicepresidencia de Desarrollo Estratégico:** {total_presupuesto_de_desarrollo:,.0f} USD")
-
-    # Datos para la sección Vicepresidencia de Operaciones y Países
-    vicepresidencia_operaciones_paises_data = {
-        "Concepto": [
-            "Posiciones",
-            "Misiones de Servicio",
-            "Servicios Profesionales a Término",
-            "Gastos en Personal",
-            "Programa de Comunicaciones",
-            "Gastos Administrativos",
-            "Total de Gastos"
-        ],
-        "Monto (USD)": [
-            33,              # Posiciones (count)
-            482865,          # Misiones de Servicio
-            580860,          # Servicios Profesionales a Término
-            4686208,         # Gastos en Personal
-            62200,           # Programa de Comunicaciones
-            615600,          # Gastos Administrativos
-            677800           # Total de Gastos
-        ]
-    }
-
-    vicepresidencia_operaciones_paises_df = pd.DataFrame(vicepresidencia_operaciones_paises_data)
-
-    # Mostrar los ítems y el total dentro de la misma sección expandible
-    with st.expander("Vicepresidencia de Operaciones y Países"):
-        for index, row in vicepresidencia_operaciones_paises_df.iterrows():
-            if row['Concepto'] == "Posiciones":
-                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']}")
-            else:
-                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
-        st.markdown("---")  # Línea divisoria
-        # Mostrar Total Presupuesto fuera de la tabla
-        total_presupuesto_operaciones_paises = 6862440  # Valor proporcionado por el usuario
-        st.markdown(f"**Total Presupuesto Vicepresidencia de Operaciones y Países:** {total_presupuesto_operaciones_paises:,.0f} USD")
-
-    # Datos para la sección Vicepresidencia de Finanzas
-    vicepresidencia_finanzas_data = {
-        "Concepto": [
-            "Posiciones",
-            "Misiones de Servicio",
-            "Servicios Profesionales a Término",
-            "Gastos en Personal",
-            "Gastos Administrativos"
-        ],
-        "Monto (USD)": [
-            17,              # Posiciones (count)
-            179560,          # Misiones de Servicio
-            258450,          # Servicios Profesionales a Término
-            2329964,         # Gastos en Personal
-            731500           # Gastos Administrativos
-        ]
-    }
-
-    vicepresidencia_finanzas_df = pd.DataFrame(vicepresidencia_finanzas_data)
-
-    # Mostrar los ítems y el total dentro de la misma sección expandible
-    with st.expander("Vicepresidencia de Finanzas"):
-        for index, row in vicepresidencia_finanzas_df.iterrows():
-            if row['Concepto'] == "Posiciones":
-                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']}")
-            else:
-                st.markdown(f"**{row['Concepto']}:** {row['Monto (USD)']:,.0f} USD")
-        st.markdown("---")  # Línea divisoria
-        # Mostrar Total Presupuesto fuera de la tabla
-        total_presupuesto_finanzas = 3499504  # Valor proporcionado por el usuario
-        st.markdown(f"**Total Presupuesto Vicepresidencia de Finanzas:** {total_presupuesto_finanzas:,.0f} USD")
+    except Exception as e:
+        st.error(f"Error al leer la hoja 'Consolidado': {e}")
 
 # Funciones para procesar Misiones y Consultorías
 def process_misiones_page(unit, tipo, page, deseados, use_objetivo):

@@ -61,11 +61,12 @@ def handle_consolidado_page():
         gb = GridOptionsBuilder.from_dataframe(df_consolidado)
         gb.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
         
+        # Se modifica el formateador para garantizar solo dos decimales
         for col in numeric_cols_consolidado:
             gb.configure_column(
                 col,
                 type=["numericColumn"],
-                valueFormatter=f'function(params) {{ return params.value.toFixed(2); }}'
+                valueFormatter='function(params) { return params.value !== undefined && params.value !== null ? Number(params.value).toFixed(2) : ""; }'
             )
         
         gb.configure_pagination(paginationAutoPageSize=True)  # Habilitar paginación
@@ -101,7 +102,7 @@ def handle_consolidado_page():
             gb_v2.configure_column(
                 col,
                 type=["numericColumn"],
-                valueFormatter=f'function(params) {{ return params.value.toFixed(2); }}'
+                valueFormatter='function(params) { return params.value !== undefined && params.value !== null ? Number(params.value).toFixed(2) : ""; }'
             )
         
         gb_v2.configure_pagination(paginationAutoPageSize=True)  # Habilitar paginación
@@ -247,8 +248,8 @@ def main():
             "Consultorías": 170000.0
         },
         "PRE": {
-            "Misiones": 0.0,         # Se actualizarán dinámicamente
-            "Consultorías": 0.0      # Se actualizarán dinámicamente
+            "Misiones": 0.0,
+            "Consultorías": 0.0
         }
     }
 
@@ -284,7 +285,7 @@ def main():
     elif main_page == "PRE":
         handle_pre_page(deseados)
     elif main_page == "Coordinación":
-        create_consolidado(deseados)  # Considera eliminar esta línea si ya no es necesaria
+        create_consolidado(deseados) 
     elif main_page == "Consolidado":
         handle_consolidado_page()
 
@@ -340,17 +341,13 @@ def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
     cache_file = f'cache/{unit}_{tipo}_DPP2025.csv'
     cache_dir = 'cache'
 
-    # Función para procesar el DataFrame
     def process_misiones_df(df, sheet_name, unit):
         if unit == "VPE":
-            # Columnas específicas para VPE Misiones
             required_columns = ['ÍTEM PRESUPUESTO', 'OFICINA', 'UNID. ORG.', 'ACCIONES', 'CATEGORÍA', 'SUBCATEGORÍA', 'Suma de MONTO']
         elif unit == "PRE":
-            # Columnas específicas para PRE Misiones
             required_columns = ['País', 'Operación', 'PRE o VP', 'Cantidad de Funcionarios', 'Días',
                                 'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total', 'Area imputacion']
         else:
-            # Columnas para otras unidades
             required_columns = ['País', 'Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
                                 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
             if use_objetivo:
@@ -362,13 +359,10 @@ def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
                 st.stop()
 
         if unit == "VPE":
-            # Para VPE, 'Suma de MONTO' ya está calculado
             df['Total'] = pd.to_numeric(df['Suma de MONTO'].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
         elif unit == "PRE":
-            # Para PRE, 'Total' ya está calculado
             df['Total'] = pd.to_numeric(df['Total'].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
         else:
-            # Para otras unidades, recalcular 'Total' si es necesario
             numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
                                'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
             for col in numeric_columns:
@@ -413,19 +407,14 @@ def process_consultorias_page(unit, tipo, page, deseados):
     cache_file = f'cache/{unit}_{tipo}_DPP2025.csv'
     cache_dir = 'cache'
 
-    # Función para procesar el DataFrame
     def process_consultorias_df(df, sheet_name, unit):
         if unit == "VPE":
-            # Columnas específicas para VPE Consultorías
             required_columns = ['ÍTEM PRESUPUESTO', 'OFICINA', 'UNID. ORG.', 'ACCIONES', 'CATEGORÍA', 'SUBCATEGORÍA', 'Suma de MONTO']
         elif unit == "PRE":
-            # Columnas específicas para PRE Consultorías
             required_columns = ['Cargo', 'PRE/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Area imputacion']
         elif unit == "VPO":
-            # Columnas específicas para VPO Consultorías
             required_columns = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Observaciones', 'Objetivo', 'tipo']
         else:
-            # Columnas para otras unidades
             required_columns = ['Cargo', f"{unit}/AREA", 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
 
         for col in required_columns:
@@ -434,17 +423,13 @@ def process_consultorias_page(unit, tipo, page, deseados):
                 st.stop()
 
         if unit == "VPE":
-            # Para VPE, 'Suma de MONTO' ya está calculado
             df['Total'] = pd.to_numeric(df['Suma de MONTO'].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
         elif unit == "PRE":
-            # Para PRE, 'Total' ya está calculado
             df['Total'] = pd.to_numeric(df['Total'].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
         elif unit == "VPO":
-            # Para VPO Consultorías, 'Total' ya está calculado o debe ser recalculado
             if 'Total' not in df.columns or df['Total'].sum() == 0:
                 df['Total'] = df.apply(calculate_total_consultorias, axis=1)
         else:
-            # Para otras unidades, recalcular 'Total' si es necesario
             numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
             for col in numeric_columns:
                 if col in df.columns:
@@ -598,12 +583,9 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
     gb.configure_default_column(editable=True, groupable=True)
 
     if unit == "VPE":
-        # Configurar columnas para VPE Misiones
         editable_columns = ['Suma de MONTO']
         gb.configure_columns(editable_columns, editable=True, type=['numericColumn'], valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})")
-        # 'Total' ya está calculado y no editable
     elif unit == "PRE":
-        # Configurar columnas para PRE Misiones
         editable_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
         for col in editable_columns:
             gb.configure_column(
@@ -612,7 +594,6 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
                 type=['numericColumn'],
                 valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
             )
-        # Recalcular 'Total'
         gb.configure_column('Total', editable=False, valueGetter=JsCode("""
             function(params) {
                 return Math.round(
@@ -624,7 +605,6 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
             }
         """))
     else:
-        # Configurar columnas para otras unidades
         numeric_columns_aggrid = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
                                   'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
         for col in numeric_columns_aggrid:
@@ -664,14 +644,11 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
     edited_df = pd.DataFrame(grid_response['data'])
 
     if unit == "VPE":
-        # Validar columnas para VPE Misiones
         essential_cols = ['ÍTEM PRESUPUESTO', 'OFICINA', 'UNID. ORG.', 'ACCIONES', 'CATEGORÍA', 'SUBCATEGORÍA', 'Suma de MONTO', 'Total']
     elif unit == "PRE":
-        # Validar columnas para PRE Misiones
         essential_cols = ['País', 'Operación', 'PRE o VP', 'Cantidad de Funcionarios', 'Días',
                           'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total', 'Area imputacion']
     else:
-        # Validar columnas para otras unidades
         essential_cols = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
                           'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
         if use_objetivo:
@@ -683,37 +660,22 @@ def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
             st.stop()
 
     if unit == "VPE":
-        # Convertir columnas numéricas a numérico
         numeric_columns = ['Suma de MONTO']
         for col in numeric_columns:
-            if col in edited_df.columns:
-                edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-            else:
-                st.error(f"La columna '{col}' está ausente en los datos editados.")
-                st.stop()
-        # Recalcular 'Total'
+            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
         edited_df['Total'] = edited_df.apply(lambda row: row['Suma de MONTO'], axis=1)
     elif unit == "PRE":
-        # Convertir columnas numéricas a numérico
         numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje', 'Alojamiento', 'Per-diem y Otros', 'Movilidad']
         for col in numeric_columns:
-            if col in edited_df.columns:
-                edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-            else:
-                st.error(f"La columna '{col}' está ausente en los datos editados.")
-                st.stop()
-        # Recalcular 'Total'
+            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
         edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
     else:
-        # Convertir columnas numéricas a numérico
         numeric_columns = ['Cantidad de Funcionarios', 'Días', 'Costo de Pasaje',
                            'Alojamiento', 'Per-diem y Otros', 'Movilidad', 'Total']
         for col in numeric_columns:
             edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-
         edited_df['Total'] = edited_df.apply(calculate_total_misiones, axis=1)
 
-    # Calcular la suma total y la diferencia con el monto DPP 2025
     total_sum = edited_df['Total'].sum()
     difference = desired_total - total_sum
 
@@ -737,12 +699,9 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
     gb.configure_default_column(editable=True, groupable=True)
 
     if unit == "VPE":
-        # Configurar columnas para VPE Consultorías
         editable_columns = ['Suma de MONTO']
         gb.configure_columns(editable_columns, editable=True, type=['numericColumn'], valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})")
-        # 'Total' ya está calculado y no editable
     elif unit == "PRE":
-        # Configurar columnas para PRE Consultorías
         editable_columns = ['Nº', 'Monto mensual', 'cantidad meses']
         for col in editable_columns:
             gb.configure_column(
@@ -751,7 +710,6 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
                 type=['numericColumn'],
                 valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
             )
-        # Recalcular 'Total'
         gb.configure_column('Total', editable=False, valueGetter=JsCode("""
             function(params) {
                 return Math.round(
@@ -760,7 +718,6 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
             }
         """))
     elif unit == "VPO":
-        # Configurar columnas para VPO Consultorías
         editable_columns = ['Nº', 'Monto mensual', 'cantidad meses']
         for col in editable_columns:
             gb.configure_column(
@@ -769,7 +726,6 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
                 type=['numericColumn'],
                 valueFormatter="Math.round(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
             )
-        # Recalcular 'Total'
         gb.configure_column('Total', editable=False, valueGetter=JsCode("""
             function(params) {
                 return Math.round(
@@ -778,7 +734,6 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
             }
         """))
     else:
-        # Configurar columnas para otras unidades
         numeric_columns_aggrid = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
         for col in numeric_columns_aggrid:
             gb.configure_column(
@@ -814,16 +769,12 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
     edited_df = pd.DataFrame(grid_response['data'])
 
     if unit == "VPE":
-        # Validar columnas para VPE Consultorías
         essential_cols = ['ÍTEM PRESUPUESTO', 'OFICINA', 'UNID. ORG.', 'ACCIONES', 'CATEGORÍA', 'SUBCATEGORÍA', 'Suma de MONTO', 'Total']
     elif unit == "PRE":
-        # Validar columnas para PRE Consultorías
         essential_cols = ['Cargo', 'PRE/AREA', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Area imputacion']
     elif unit == "VPO":
-        # Validar columnas para VPO Consultorías
         essential_cols = ['Cargo', 'Nº', 'Monto mensual', 'cantidad meses', 'Total', 'Observaciones', 'Objetivo', 'tipo']
     else:
-        # Validar columnas para otras unidades
         essential_cols = ['Cargo', f"{unit}/AREA", 'Nº', 'Monto mensual', 'cantidad meses', 'Total']
 
     for col in essential_cols:
@@ -832,36 +783,21 @@ def edit_consultorias_dpp(df, unit, desired_total, tipo):
             st.stop()
 
     if unit == "VPE":
-        # Convertir columnas numéricas a numérico
         numeric_columns = ['Suma de MONTO']
         for col in numeric_columns:
-            if col in edited_df.columns:
-                edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-            else:
-                st.error(f"La columna '{col}' está ausente en los datos editados.")
-                st.stop()
-        # Recalcular 'Total'
+            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
         edited_df['Total'] = edited_df.apply(lambda row: row['Suma de MONTO'], axis=1)
     elif unit == "PRE":
-        # Convertir columnas numéricas a numérico
         numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses']
         for col in numeric_columns:
-            if col in edited_df.columns:
-                edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-            else:
-                st.error(f"La columna '{col}' está ausente en los datos editados.")
-                st.stop()
-        # Recalcular 'Total'
+            edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
         edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
     else:
-        # Convertir columnas numéricas a numérico
         numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']
         for col in numeric_columns:
             edited_df[col] = pd.to_numeric(edited_df[col].astype(str).str.replace(',', '').str.strip(), errors='coerce').fillna(0)
-
         edited_df['Total'] = edited_df.apply(calculate_total_consultorias, axis=1)
 
-    # Calcular la suma total y la diferencia con el monto DPP 2025
     total_sum = edited_df['Total'].sum()
     difference = desired_total - total_sum
 

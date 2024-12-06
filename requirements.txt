@@ -3,4 +3,4 @@ pandas
 openpyxl
 streamlit-aggrid
 plotly
-mitosheet
+streamlit_authenticator

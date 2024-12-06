@@ -44,21 +44,25 @@ def save_to_cache(df, unidad, tipo):
     cache_file = f"{cache_dir}/{unidad}_{tipo}_DPP2025.csv"
     df.to_csv(cache_file, index=False)
 
-# Función para manejar la página de Consolidado
+# Función para manejar la página de Consolidado (modificada según requerimientos)
 def handle_consolidado_page():
     st.header("Consolidado")
     
     file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que la ruta al archivo sea correcta
 
     try:
-        # Leer la hoja 'Consolidado' del archivo Excel
+        # Leer la hoja 'Consolidado'
         df_consolidado = pd.read_excel(file_path, sheet_name='Consolidado')
         numeric_cols_consolidado = df_consolidado.select_dtypes(include=['float', 'int']).columns.tolist()
 
-        # Aplicar estilo a la tabla Consolidado
-        styled_consolidado = (df_consolidado.style
-                              .format("{:,.2f}", subset=numeric_cols_consolidado)
-                              .background_gradient(cmap='BuGn', subset=numeric_cols_consolidado))
+        # Formatear solo columnas numéricas
+        styled_consolidado = df_consolidado.style.format(
+            subset=numeric_cols_consolidado,
+            formatter="{:,.2f}"
+        ).background_gradient(
+            cmap='BuGn',
+            subset=numeric_cols_consolidado
+        )
 
         st.subheader("Tabla Consolidado")
         st.dataframe(styled_consolidado, height=500, width='100%')
@@ -68,10 +72,13 @@ def handle_consolidado_page():
         df_consolidadoV2 = pd.read_excel(file_path, sheet_name='consolidadoV2')
         numeric_cols_consolidadoV2 = df_consolidadoV2.select_dtypes(include=['float', 'int']).columns.tolist()
 
-        # Aplicar estilo a la tabla Consolidado V2
-        styled_consolidadoV2 = (df_consolidadoV2.style
-                                .format("{:,.2f}", subset=numeric_cols_consolidadoV2)
-                                .background_gradient(cmap='BuGn', subset=numeric_cols_consolidadoV2))
+        styled_consolidadoV2 = df_consolidadoV2.style.format(
+            subset=numeric_cols_consolidadoV2,
+            formatter="{:,.2f}"
+        ).background_gradient(
+            cmap='BuGn',
+            subset=numeric_cols_consolidadoV2
+        )
 
         st.subheader("Tabla Consolidado V2")
         st.dataframe(styled_consolidadoV2, height=500, width='100%')
@@ -234,7 +241,6 @@ def process_misiones_page(unit, tipo, page, deseados, use_objetivo):
     file_path = 'BDD_Ajuste.xlsx'
     sheet_name = f"Misiones_{unit}"
     cache_file = f'cache/{unit}_{tipo}_DPP2025.csv'
-    cache_dir = 'cache'
 
     def process_misiones_df(df, sheet_name, unit):
         if unit == "VPE":
@@ -300,7 +306,6 @@ def process_consultorias_page(unit, tipo, page, deseados):
     file_path = 'BDD_Ajuste.xlsx'
     sheet_name = f"Consultores_{unit}"
     cache_file = f'cache/{unit}_{tipo}_DPP2025.csv'
-    cache_dir = 'cache'
 
     def process_consultorias_df(df, sheet_name, unit):
         if unit == "VPE":
@@ -366,82 +371,21 @@ def process_consultorias_page(unit, tipo, page, deseados):
 def display_misiones_requerimiento(df, unit):
     st.header(f"{unit} - Misiones: Requerimiento del área")
     st.subheader("Tabla Completa - Misiones")
-    if unit == "VPE":
-        st.dataframe(
-            df.style.format({
-                "Suma de MONTO": "{:,.2f}",
-                "Total": "{:,.2f}"
-            }),
-            height=400
-        )
-    elif unit == "PRE":
-        st.dataframe(
-            df.style.format({
-                "Cantidad de Funcionarios": "{:.0f}",
-                "Días": "{:.0f}",
-                "Costo de Pasaje": "{:,.2f}",
-                "Alojamiento": "{:,.2f}",
-                "Per-diem y Otros": "{:,.2f}",
-                "Movilidad": "{:,.2f}",
-                "Total": "{:,.2f}"
-            }),
-            height=400
-        )
-    else:
-        st.dataframe(
-            df.style.format({
-                "Cantidad de Funcionarios": "{:.0f}",
-                "Días": "{:.0f}",
-                "Costo de Pasaje": "{:,.2f}",
-                "Alojamiento": "{:,.2f}",
-                "Per-diem y Otros": "{:,.2f}",
-                "Movilidad": "{:,.2f}",
-                "Total": "{:,.2f}"
-            }),
-            height=400
-        )
+    # Se formatean las columnas numéricas a dos decimales sin afectar columnas texto
+    numeric_cols = df.select_dtypes(include=['float', 'int']).columns.tolist()
+    st.dataframe(
+        df.style.format("{:,.2f}", subset=numeric_cols),
+        height=400
+    )
 
 def display_consultorias_requerimiento(df, unit):
     st.header(f"{unit} - Consultorías: Requerimiento del área")
     st.subheader("Tabla Completa - Consultorías")
-    if unit == "VPE":
-        st.dataframe(
-            df.style.format({
-                "Suma de MONTO": "{:,.2f}",
-                "Total": "{:,.2f}"
-            }),
-            height=400
-        )
-    elif unit == "PRE":
-        st.dataframe(
-            df.style.format({
-                "Nº": "{:.0f}",
-                "Monto mensual": "{:,.2f}",
-                "cantidad meses": "{:.0f}",
-                "Total": "{:,.2f}"
-            }),
-            height=400
-        )
-    elif unit == "VPO":
-        st.dataframe(
-            df.style.format({
-                "Nº": "{:.0f}",
-                "Monto mensual": "{:,.2f}",
-                "cantidad meses": "{:.0f}",
-                "Total": "{:,.2f}"
-            }),
-            height=400
-        )
-    else:
-        st.dataframe(
-            df.style.format({
-                "Nº": "{:.0f}",
-                "Monto mensual": "{:,.2f}",
-                "cantidad meses": "{:.0f}",
-                "Total": "{:,.2f}"
-            }),
-            height=400
-        )
+    numeric_cols = df.select_dtypes(include=['float', 'int']).columns.tolist()
+    st.dataframe(
+        df.style.format("{:,.2f}", subset=numeric_cols),
+        height=400
+    )
 
 # Funciones de edición
 def edit_misiones_dpp(df, unit, desired_total, tipo, use_objetivo):
@@ -732,11 +676,12 @@ def main():
             "Consultorías": 170000.0
         },
         "PRE": {
-            "Misiones": 0.0,         
-            "Consultorías": 0.0      
+            "Misiones": 0.0,
+            "Consultorías": 0.0
         }
     }
 
+    # Calcular los montos deseados para PRE
     file_path = 'BDD_Ajuste.xlsx'
     try:
         # Calcular para Misiones PRE

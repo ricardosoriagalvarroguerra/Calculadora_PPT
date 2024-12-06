@@ -185,6 +185,7 @@ def handle_consolidado_page():
             width='100%',
             theme='ag-theme-balham'  # Usar el mismo tema para consistencia
         )
+
     except Exception as e:
         st.error(f"Error al leer las hojas 'Consolidado' o 'consolidadoV2': {e}")
 # Función para crear el consolidado dividido en Misiones y Consultorías

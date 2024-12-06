@@ -58,7 +58,7 @@ def handle_consolidado_page():
         numeric_cols_consolidado = df_consolidado.select_dtypes(include=['float', 'int']).columns.tolist()
         df_consolidado[numeric_cols_consolidado] = df_consolidado[numeric_cols_consolidado].round(2)
 
-        # Configurar opciones para AgGrid con formateo de números a dos decimales y autosize
+        # Configurar opciones para AgGrid con formateo de números a dos decimales
         gb = GridOptionsBuilder.from_dataframe(df_consolidado)
         gb.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
         
@@ -71,7 +71,6 @@ def handle_consolidado_page():
         
         gb.configure_pagination(paginationAutoPageSize=True)  # Habilitar paginación
         gb.configure_side_bar()  # Habilitar barra lateral en la tabla
-        gb.configure_grid_options(domLayout='autoHeight', suppressColumnVirtualisation=True)
 
         grid_options = gb.build()
 
@@ -96,7 +95,7 @@ def handle_consolidado_page():
         numeric_cols_consolidadoV2 = df_consolidadoV2.select_dtypes(include=['float', 'int']).columns.tolist()
         df_consolidadoV2[numeric_cols_consolidadoV2] = df_consolidadoV2[numeric_cols_consolidadoV2].round(2)
 
-        # Configurar opciones para AgGrid con formateo de números a dos decimales y autosize
+        # Configurar opciones para AgGrid con formateo de números a dos decimales
         gb_v2 = GridOptionsBuilder.from_dataframe(df_consolidadoV2)
         gb_v2.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
         
@@ -109,7 +108,6 @@ def handle_consolidado_page():
         
         gb_v2.configure_pagination(paginationAutoPageSize=True)  # Habilitar paginación
         gb_v2.configure_side_bar()  # Habilitar barra lateral en la tabla
-        gb_v2.configure_grid_options(domLayout='autoHeight', suppressColumnVirtualisation=True)
 
         grid_options_v2 = gb_v2.build()
 
@@ -127,53 +125,6 @@ def handle_consolidado_page():
 
     except Exception as e:
         st.error(f"Error al leer las hojas 'Consolidado' o 'consolidadoV2': {e}")
-
-# Función para manejar la página de Coordinación
-def handle_coordinacion_page():
-    st.header("Coordinación")
-    
-    # Suponiendo que 'Coordinacion' está en una hoja llamada 'Coordinacion' en el mismo archivo Excel
-    file_path = 'BDD_Ajuste.xlsx'  # Asegúrate de que la ruta al archivo sea correcta
-
-    try:
-        # Leer la hoja 'Coordinacion' del archivo Excel
-        df_coordinacion = pd.read_excel(file_path, sheet_name='Coordinacion')
-        
-        # Redondear todas las columnas numéricas a dos decimales
-        numeric_cols_coordinacion = df_coordinacion.select_dtypes(include=['float', 'int']).columns.tolist()
-        df_coordinacion[numeric_cols_coordinacion] = df_coordinacion[numeric_cols_coordinacion].round(2)
-
-        # Configurar opciones para AgGrid con formateo de números a dos decimales y autosize
-        gb = GridOptionsBuilder.from_dataframe(df_coordinacion)
-        gb.configure_default_column(editable=False, sortable=True, filter=True, type=["numericColumn"])
-        
-        for col in numeric_cols_coordinacion:
-            gb.configure_column(
-                col,
-                type=["numericColumn"],
-                valueFormatter=f'function(params) {{ return params.value.toFixed(2); }}'
-            )
-        
-        gb.configure_pagination(paginationAutoPageSize=True)  # Habilitar paginación
-        gb.configure_side_bar()  # Habilitar barra lateral en la tabla
-        gb.configure_grid_options(domLayout='autoHeight', suppressColumnVirtualisation=True)
-
-        grid_options = gb.build()
-
-        # Mostrar la tabla usando AgGrid para una mejor interactividad
-        AgGrid(
-            df_coordinacion,
-            gridOptions=grid_options,
-            data_return_mode=DataReturnMode.FILTERED,
-            update_mode='MODEL_CHANGED',
-            fit_columns_on_grid_load=True,
-            height=500,
-            width='100%',
-            theme='alpine'
-        )
-
-    except Exception as e:
-        st.error(f"Error al leer la hoja 'Coordinacion': {e}")
 
 # Función para crear el consolidado dividido en Misiones y Consultorías
 def create_consolidado(deseados):
@@ -275,7 +226,7 @@ def main():
     st.sidebar.title("Navegación")
     main_page = st.sidebar.selectbox(
         "Selecciona una página principal:",
-        ("VPO", "VPD", "VPE", "VPF", "PRE", "Coordinación", "Consolidado")
+        ("VPO", "VPD", "VPE", "VPF", "PRE", "Consolidado")
     )
     st.title(main_page)
 
@@ -334,8 +285,6 @@ def main():
         handle_vpf_page(deseados)
     elif main_page == "PRE":
         handle_pre_page(deseados)
-    elif main_page == "Coordinación":
-        handle_coordinacion_page()
     elif main_page == "Consolidado":
         handle_consolidado_page()
 
@@ -498,7 +447,8 @@ def process_consultorias_page(unit, tipo, page, deseados):
         elif unit == "VPO":
             # Para VPO Consultorías, 'Total' ya está calculado o debe ser recalculado
             if 'Total' not in df.columns or df['Total'].sum() == 0:
-                df['Total'] = df.apply(calculate_total_consultorias, axis=1).round(2)
+                df['Total'] = df.apply(calculate_total_consultorias, axis=1)
+                df['Total'] = df['Total'].round(2)
         else:
             # Para otras unidades, recalcular 'Total' si es necesario
             numeric_columns = ['Nº', 'Monto mensual', 'cantidad meses', 'Total']

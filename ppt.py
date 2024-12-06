@@ -164,7 +164,6 @@ def handle_consolidado_page():
 
     except Exception as e:
         st.error(f"Error al leer las hojas 'Consolidado' o 'consolidadoV2': {e}")
-    ```
 # Función para crear el consolidado dividido en Misiones y Consultorías
 def create_consolidado(deseados):
     st.header("")
